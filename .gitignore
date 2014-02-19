@@ -1,0 +1,15 @@
+*.obj
+Debug.win32
+*.opensdf
+*.sdf
+*.sln
+*.suo
+*.vcxproj
+*.filters
+*.user
+obj
+gen
+libs
+bin
+.settings
+lint.xml
