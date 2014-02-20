@@ -12,11 +12,9 @@ bool GameOverScene::init()
 	bool bRet = false;
 	do 
 	{
-		CCSize size = CCDirector::sharedDirector()->getWinSize();
+		Size size = Director::sharedDirector()->getWinSize();
 
-		std::string titleStr = "GameOver";
-
-		CCLabelTTF* pLabel = CCLabelTTF::create(titleStr.c_str(), "Thonburi", 30);
+		auto pLabel = LabelTTF::create("GameOver", "Thonburi", 30);
 		CC_BREAK_IF(! pLabel);
 		// Get window size and place the label upper. 		
 		pLabel->setPosition(ccp(size.width / 2, size.height*0.9f));
@@ -27,40 +25,32 @@ bool GameOverScene::init()
 		std::string second="second";
 		char szBuf[128];
 		memset(szBuf,0,sizeof(szBuf));
-		sprintf(szBuf,"%d",(int)g_gameTime);
-		std::string titleStr3=keepTime+szBuf+second;
-		CCLabelTTF *pLabel3=CCLabelTTF::create(titleStr3.c_str(),"Thonburi",30);
-		CC_BREAK_IF(! pLabel3);
+		sprintf(szBuf," %d ",(int)g_gameTime);
+		std::string titleStr3 = keepTime + szBuf + second;
+		auto pLabel3=LabelTTF::create(titleStr3.c_str(), "Thonburi", 30);
 
 		// Get window size and place the label upper. 		
 		pLabel3->setPosition(ccp(size.width / 2, size.height*0.7f));
 		// Add the label to TitleScene layer as a child layer.
 		this->addChild(pLabel3, 1);
 
-		std::string yourAppraise="you get:";
 
-		CCLabelTTF* pLabel4 = CCLabelTTF::create(yourAppraise.c_str(), "Thonburi", 30);
-		CC_BREAK_IF(! pLabel4);
+		auto pLabel4 = LabelTTF::create("you get: ", "Thonburi", 30);
 
 		// Get window size and place the label upper. 		
 		pLabel4->setPosition(ccp(size.width / 2, size.height*0.5f));
 		// Add the label to TitleScene layer as a child layer.
 		this->addChild(pLabel4, 1);
 
-		std::string appraise=convertAppraise();
-
-		CCLabelTTF* pLabel5 = CCLabelTTF::create(appraise.c_str(), "Thonburi", 30);
-		CC_BREAK_IF(! pLabel5);
+		std::string appraise = convertAppraise();
+		auto pLabel5 = LabelTTF::create(appraise.c_str(), "Thonburi", 30);
 		
 		// Get window size and place the label upper. 		
 		pLabel5->setPosition(ccp(size.width / 2, size.height*0.3f));
 		// Add the label to TitleScene layer as a child layer.
 		this->addChild(pLabel5, 1);
 
-		std::string titleStr2 = "click return";
-
-		CCLabelTTF* pLabel2 = CCLabelTTF::create(titleStr2.c_str(), "Thonburi", 30);
-		CC_BREAK_IF(! pLabel2);
+		auto pLabel2 = LabelTTF::create("return", "Thonburi", 30);
 
 		// Get window size and place the label upper. 		
 		pLabel2->setPosition(ccp(size.width / 2, size.height*0.1f));
@@ -77,13 +67,13 @@ bool GameOverScene::init()
 	return bRet;
 }
 
-cocos2d::CCScene* GameOverScene::scene()
+Scene* GameOverScene::scene()
 {
-	CCScene * scene = NULL;
+	Scene * scene = NULL;
 	do 
 	{
 		// 'scene' is an autorelease object
-		scene = CCScene::create();
+		scene = Scene::create();
 		CC_BREAK_IF(! scene);
 
 		// 'layer' is an autorelease object
@@ -101,8 +91,8 @@ cocos2d::CCScene* GameOverScene::scene()
 
 void GameOverScene::onTouchesBegan(const vector<Touch*>& touches, Event *unused_event)
 {
-	CCScene *scene=GameScene::createScene();
-	CCDirector::sharedDirector()->replaceScene(CCTransitionFade::create(1.2f,scene));
+	Scene *scene=GameScene::createScene();
+	Director::sharedDirector()->replaceScene(TransitionFade::create(1.2f,scene));
 }
 
 std::string GameOverScene::convertAppraise()

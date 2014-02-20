@@ -37,17 +37,17 @@ bool SettingScene::init()
 		//弹数设置
 		str = "dan shu";
 
-		CCMenuItemFont *title2 = CCMenuItemFont::create(str.c_str(),NULL,NULL);
+		auto title2 = MenuItemFont::create(str.c_str(),NULL,NULL);
 		title2->setEnabled(false);
 
 		str = "50";
-		CCMenuItemFont *bulletNum50Item = CCMenuItemFont::create(str.c_str());
+		auto bulletNum50Item = MenuItemFont::create(str.c_str());
 
 		str = "100";
-		CCMenuItemFont *bulletNum100Item = CCMenuItemFont::create(str.c_str());
+		auto bulletNum100Item = MenuItemFont::create(str.c_str());
 
 		str = "150";
-		CCMenuItemFont *bulletNum150Item = CCMenuItemFont::create(str.c_str());
+		auto bulletNum150Item = MenuItemFont::create(str.c_str());
 
 	
 		auto bulletNumItem = MenuItemToggle::createWithCallback( CC_CALLBACK_1(SettingScene::bulletNumCallback, this),
@@ -55,18 +55,17 @@ bool SettingScene::init()
                                                                 bulletNum100Item,
 																bulletNum150Item,
                                                                 NULL );
-		bulletNumItem->setSelectedIndex(g_bulletNum/50-1);
+		//bulletNumItem->setSelectedIndex(g_bulletNum/50-1);
 
-		CCMenuItemFont::setFontName("Marker Felt");
-		CCMenuItemFont::setFontSize(26);
+		MenuItemFont::setFontName("Marker Felt");
+		MenuItemFont::setFontSize(26);
 
 		//返回
 		str = "back";
-
-		CCMenuItem *back =CCMenuItemFont::create(str.c_str(),this,menu_selector(SettingScene::backCallback));
+		auto back = MenuItemFont::create(str.c_str(), this, menu_selector(SettingScene::backCallback));
 
 		//窗口布局
-		CCMenu *menu = CCMenu::create(title1,soundItem,title2,bulletNumItem,back,NULL);
+		auto menu = Menu::create(title1,soundItem,title2,bulletNumItem,back,NULL);
 		menu->alignItemsInColumns(2,2,1);
 		this->addChild(menu);
 
@@ -79,13 +78,13 @@ bool SettingScene::init()
 	return bRet;
 }
 
-cocos2d::CCScene* SettingScene::scene()
+Scene* SettingScene::scene()
 {
-	CCScene * scene = NULL;
+	Scene * scene = NULL;
 	do 
 	{
 		// 'scene' is an autorelease object
-		scene = CCScene::create();
+		scene = Scene::create();
 		CC_BREAK_IF(! scene);
 
 		// 'layer' is an autorelease object
@@ -100,23 +99,23 @@ cocos2d::CCScene* SettingScene::scene()
 	return scene;
 }
 
-void SettingScene::backCallback( cocos2d::CCObject *pSender )
+void SettingScene::backCallback(Object *pSender )
 {
-	CCScene *scene=GameScene::createScene();
-	CCDirector::sharedDirector()->replaceScene(CCTransitionFlipX::create(1.2f,scene));
+	Scene *scene=GameScene::createScene();
+	Director::sharedDirector()->replaceScene(TransitionFlipX::create(1.2f,scene));
 }
 
-void SettingScene::soundCallback( cocos2d::CCObject *pSender )
+void SettingScene::soundCallback(Object *pSender )
 {
 	g_isPlaySoundEffect=!g_isPlaySoundEffect;
 }
 
-void SettingScene::bulletNumCallback( cocos2d::CCObject *pSender )
+void SettingScene::bulletNumCallback(Object *pSender )
 {
-	g_bulletNum+=50;
+	g_bulletNum += 50;
 
-	if(g_bulletNum>150)
+	if(g_bulletNum > 150)
 	{
-		g_bulletNum=50;
+		g_bulletNum = 50;
 	}
 }

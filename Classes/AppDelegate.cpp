@@ -17,6 +17,7 @@ bool AppDelegate::applicationDidFinishLaunching() {
     auto eglView = EGLView::getInstance();
 
     director->setOpenGLView(eglView);
+	eglView->setDesignResolutionSize(480, 320, ResolutionPolicy::SHOW_ALL);
 	
     // turn on display FPS
     director->setDisplayStats(true);

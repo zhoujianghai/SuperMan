@@ -12,44 +12,27 @@ bool FlyScene::init()
 	bool bRet = false;
 	do 
 	{
-		CC_BREAK_IF(! CCLayer::init());
+		CC_BREAK_IF(! Layer::init());
 
-		CCSize s = CCDirector::sharedDirector()->getWinSize();	
-
-		auto joystick1 = CCSprite::create("joystick1.png");
-		joystick1->setOpacity(191);
-		joystick1->setAnchorPoint(ccp(0,0));
-		joystick1->setPosition(ccp(0,0));
-		radius=joystick1->getContentSize().width/2;
-		centre=ccp(radius,radius);
-		this->addChild(joystick1,1);
-
-		joystick = CCSprite::create("joystick2.png");
-		joystick->setPosition(ccp(centre.x,centre.y));
-		this->addChild(joystick,2);
+		Size s = Director::sharedDirector()->getWinSize();	
 
 		//返回
-		CCMenuItemFont::setFontSize(22);
-		CCMenuItemFont::setFontName("American Typewriter");
-		std::string str = "";
+		MenuItemFont::setFontSize(22);
+		MenuItemFont::setFontName("American Typewriter");
 
-		str="back";
-
-		auto systemMenu = CCMenuItemFont::create(str.c_str(), CC_CALLBACK_1(FlyScene::menuReturnCallback, this));
-
-		auto mn = CCMenu::create(systemMenu, NULL);
+		auto systemMenu = MenuItemFont::create("Back", CC_CALLBACK_1(FlyScene::menuReturnCallback, this));
+		auto mn = Menu::create(systemMenu, NULL);
 		mn->setPosition(ccp(0,0));
-
-		systemMenu->setAnchorPoint(ccp(1,0));
-		systemMenu->setPosition(ccp(s.width,0));
-
+		systemMenu->setAnchorPoint(ccp(1, 0));
+		systemMenu->setPosition(ccp(s.width, 0));
 		this->addChild(mn,1);
 
 		//飞机
-		CCTexture2D *texture=CCTextureCache::sharedTextureCache()->addImage("plane.png");
-		plane = CCSprite::createWithTexture(texture);
-		plane->setPosition(ccp(s.width/2,s.height/2));
-		this->addChild(plane,0);
+		auto textureCache = Director::getInstance()->getTextureCache();
+		auto planeTexture = textureCache->addImage("plane.png");
+		_plane = Sprite::createWithTexture(planeTexture);
+		_plane->setPosition(ccp(s.width/2, s.height/2));
+		this->addChild(_plane, 0);
 
 		//开启触摸
 		auto listener = EventListenerTouchAllAtOnce::create();
@@ -59,27 +42,29 @@ bool FlyScene::init()
 		_eventDispatcher->addEventListenerWithSceneGraphPriority(listener, this);
 
 		//开启逻辑
-		this->schedule(schedule_selector(FlyScene::flying));
 		this->schedule(schedule_selector(FlyScene::createBullet));
 		this->schedule(schedule_selector(FlyScene::checkBullet));
 		this->schedule(SEL_SCHEDULE(&FlyScene::saveTime),1);
+
 		//清零数据
-		isFlying=false;
-		speedX=speedY=0;
-		g_gameTime=0;
+		isFlying = false;
+		g_gameTime = 0;
+		_bullets = Array::create();
+		_bullets->retain();
 
 		bRet = true;
 	}while(0);
+
 	return bRet;
 }
 
-cocos2d::CCScene* FlyScene::scene()
+cocos2d::Scene* FlyScene::scene()
 {
-	CCScene * scene = NULL;
+	Scene * scene = NULL;
 	do 
 	{
 		// 'scene' is an autorelease object
-		scene = CCScene::create();
+		scene = Scene::create();
 		CC_BREAK_IF(! scene);
 
 		// 'layer' is an autorelease object
@@ -94,224 +79,168 @@ cocos2d::CCScene* FlyScene::scene()
 	return scene;
 }
 
-void FlyScene::menuReturnCallback( CCObject *pSender )
+void FlyScene::menuReturnCallback( Object *pSender )
 {
-	CCScene * scene = GameScene::createScene();
-	CCDirector::sharedDirector()->replaceScene(CCTransitionFlipX::create(1.2f,scene));
+	auto scene = GameScene::createScene();
+	Director::sharedDirector()->replaceScene(TransitionFlipX::create(1.2f, scene));
 }
 
 void FlyScene::onTouchesBegan(const vector<Touch*>& touches, Event *unused_event)
 {
 	vector<Touch*>::const_iterator touchIter = touches.begin();
 	Touch *pTouch = (Touch*)(*touchIter);
-	Point dest = pTouch->getLocation();
-	CCRect rect=joystick->boundingBox();
-	if(rect.containsPoint(dest))
+	Point location = pTouch->getLocation();
+	Rect rect = _plane->getBoundingBox();
+	if(rect.containsPoint(location))
 	{
-		isFlying=true;
+		isFlying = true;
 	}
+	log("onTouchesBegan");
 }
 
 void FlyScene::onTouchesMoved(const vector<Touch*>& touches, Event *unused_event)
 {
 	vector<Touch*>::const_iterator touchIter = touches.begin();
 	Touch *pTouch = (Touch*)(*touchIter);
-	Point dest = pTouch->getLocation();
+	Point location = pTouch->getLocation();
 
-	bool inRange = pow(centre.x - dest.x,2)+pow(centre.y-dest.y,2)<pow(radius,2);
-
-	if(isFlying&&inRange)
+	if(isFlying)
 	{
-		CCPoint position=plane->getPosition();
-		joystick->setPosition(dest);
-
-		float radius1=radius*2/6;//十字键中心区的内切圆半径
-		float side=radius*2/3;//九宫格中一个格子的边长
-
-		//我们使用海伦公式来计算面积，进而判断十字键中心区的精确方向
-		//向上
-		if(triangleContainPoint(centre.x,centre.y,centre.x-radius1,centre.y+radius1,centre.x+radius1,centre.y+radius1,dest.x,dest.y)
-			||Rect(centre.x-radius1, centre.y+radius1, side, side).containsPoint(dest))
-		{
-			speedX=0;
-			speedY=1;
-		}
-		//向下
-		else if(triangleContainPoint(centre.x,centre.y,centre.x-radius1,centre.y-radius1,centre.x+radius1,centre.y-radius1,dest.x,dest.y)
-			||Rect(centre.x-radius1,centre.y-radius1-side,side,side).containsPoint(dest))
-		{
-			speedX=0;
-			speedY=-1;
-		}
-		//向左
-		else if(triangleContainPoint(centre.x,centre.y,centre.x-radius1,centre.y+radius1,centre.x-radius1,centre.y-radius1,dest.x,dest.y)
-			||Rect(centre.x-radius1-side,centre.y-radius1,side,side).containsPoint(dest))
-		{
-			speedX=-1;
-			speedY=0;
-		}
-		//向右
-		else if (triangleContainPoint(centre.x,centre.y,centre.x+radius1,centre.y+radius1,centre.x+radius1,centre.y-radius1,dest.x,dest.y)
-			||Rect(centre.x+radius1+side,centre.y-radius1,side,side).containsPoint(dest))
-		{
-			speedX=1;
-			speedY=0;
-		}
-		//右上
-		else if(dest.x-centre.x>0&&dest.y-centre.y>0)
-		{
-			speedX=0.7f;
-			speedY=0.7f;
-		}
-		//左上
-		else if (dest.x-centre.x<0&&dest.y-centre.y>0)
-		{
-			speedX=-0.7f;
-			speedY=0.7f;
-		}
-		//左下
-		else if (dest.x-centre.x<0&&dest.y-centre.y<0)
-		{
-			speedX=-0.7f;
-			speedY=-0.7f;
-		}
-		//右下
-		else if (dest.x-centre.x>0&&dest.y-centre.y<0)
-		{
-			speedX=0.7f;
-			speedY=-0.7f;
+		Size size = Director::getInstance()->getWinSize();
+		Rect screen = Rect(0, 0, size.width, size.height);
+		if(screen.containsPoint(location)) {
+			_plane->setPosition(location);
 		}
 	}
+	log("onTouchesMoved");
 }
 
 void FlyScene::onTouchesEnded(const vector<Touch*>& touches, Event *unused_event)
 {
-	isFlying=false;
-	joystick->setPosition(centre);
-	speedX=speedY=0;
+	isFlying = false;
+	log("onTouchesEnded");
 }
 
-void FlyScene::flying(float dt )
-{
-	if (isFlying&&(speedX!=0||speedY!=0))
-	{
-		CCPoint position=ccp(plane->getPosition().x+speedX,plane->getPosition().y+speedY);
-
-		CCSize size=CCDirector::sharedDirector()->getWinSize();
-		CCRect rect=CCRectMake(0,0,size.width,size.height);
-
-		if(rect.containsPoint(position))
-		{
-			plane->setPosition(position);
-		}
-	}
-
-}
 
 void FlyScene::createBullet( float dt )
 {
-	if (bullets.size()>g_bulletNum)
+	if (_bullets->count() >= g_bulletNum)
 	{
 		return;
 	}
 
-	CCTexture2D *texture=CCTextureCache::sharedTextureCache()->addImage("bullet.png");
-	CCSprite *bullet=CCSprite::createWithTexture(texture);
-	this->addChild(bullet,0);
-	bullets.push_back(bullet);
+	auto textureCache = Director::getInstance()->getTextureCache();
+	const char *bullet_name = rand()%2 > 0 ? "bullet_1.png" : "bullet_2.png";
+	auto bulletTexture = textureCache->addImage(bullet_name);
 
-	float x,y;
-	int speedX,speedY;
-	CCSize size=CCDirector::sharedDirector()->getWinSize();
+	auto bullet = Sprite::createWithTexture(bulletTexture);
+	this->addChild(bullet, 0);
+	_bullets->addObject(bullet);
 
-	int entrance=abs(rand()%4);
-	switch(entrance)
+	float x, y;
+	int speedX, speedY;
+	Size size = Director::getInstance()->getWinSize();
+
+	int direction = abs(rand() % 4);
+	int speedUnit = 6;
+	switch(direction)
 	{
-	case 0://上侧飞入
-		x=abs(rand()%(int)size.width);
-		y=size.height-bullet->boundingBox().size.height;
-		speedX=rand()%3;
-		speedY=(abs(rand()%3+1))*-1;
-		break;
-	case 1://下侧飞入
-		x=abs(rand()%(int)size.width);
-		y=bullet->boundingBox().size.height;
-		speedX=rand()%3;
-		speedY=abs(rand()%3+1);
-		break;
-	case 2://左侧飞入
-		x=bullet->boundingBox().size.width;
-		y=abs(rand()%(int)size.height);
-		speedX=abs(rand()%3+1);
-		speedY=rand()%3;
-		break;
-	case 3://右侧飞入
-		x=size.width-bullet->boundingBox().size.width;
-		y=abs(rand()%(int)size.height);
-		speedX=abs(rand()%3+1)*-1;
-		speedY=rand()%3;
-		break;
+	case SCREEN_DIR_UP:
+		{
+			x = abs(rand()%(int)size.width);
+			y = size.height - bullet->getContentSize().height;
+			speedX = rand()%speedUnit;
+			speedY = (abs(rand()%speedUnit + 1)) * (-1);
+			break;
+		}
+
+	case SCREEN_DIR_DOWN:
+		{
+			x = abs(rand()%(int)size.width);
+			y = bullet->getContentSize().height;
+			speedX = rand()%speedUnit;
+			speedY = abs(rand()%speedUnit+1);
+			break;
+		}
+
+	case SCREEN_DIR_LEFT:
+		{
+			x = bullet->getContentSize().width;
+			y = abs(rand()%(int)size.height);
+			speedX = abs(rand()%speedUnit+1);
+			speedY=rand()%speedUnit;
+			break;
+		}
+
+	case SCREEN_DIR_RIGHT:
+		{
+			x = size.width - bullet->getContentSize().width;
+			y = abs(rand()%(int)size.height);
+			speedX = abs(rand()%speedUnit+1) * (-1);
+			speedY = rand()%speedUnit;
+			break;
+		}
 	}
 
-	CCActionInterval *action=CCMoveBy::create(0.1f,ccp(speedX,speedY));
-
 	bullet->setPosition(ccp(x,y));
-	bullet->runAction(CCRepeatForever::create(action));
+	auto action = MoveBy::create(0.1f, ccp(speedX, speedY));
+	bullet->runAction(RepeatForever::create(action));
 }
 
 void FlyScene::checkBullet(float dt)
 {
-	if (!plane->isVisible())
+	if (!_plane->isVisible())
 	{
 		return;
 	}
 
-	CCSize size=CCDirector::sharedDirector()->getWinSize();
-	CCRect screen=CCRectMake(0,0,size.width,size.height);
-	CCRect planeBox=plane->boundingBox();
-
-	for (std::vector<cocos2d::CCSprite*>::iterator bitr=bullets.begin(); bitr != bullets.end();)
+	Size size = Director::getInstance()->getWinSize();
+	Rect screen = Rect(0, 0, size.width, size.height);
+	Rect planeBox = _plane->getBoundingBox();
+	Object *bulletObj = NULL;
+	Array *will_delete_bullets = Array::create();
+	CCARRAY_FOREACH(_bullets, bulletObj)
 	{
-		CCSprite *bullet =*bitr;
-		CCPoint position=bullet->getPosition();
-		CCRect bulletBox=bullet->boundingBox();
+		Sprite *bullet = (Sprite*)bulletObj;
+		Point position = bullet->getPosition();
+		Rect bulletBox = bullet->getBoundingBox();
 
 		if (planeBox.intersectsRect(bulletBox))
 		{
+			will_delete_bullets->addObject(bullet);
 			this->removeChild(bullet, true);
-			bitr=bullets.erase(bitr);
+			_plane->setVisible(false);
 
-			plane->setVisible(false);
-
-			CCTexture2D *texture=CCTextureCache::sharedTextureCache()->addImage("explosion.png");
-			CCAnimation *animation = CCAnimation::create();
+			auto textureCache = Director::getInstance()->getTextureCache();
+			auto texture = textureCache->addImage("explosion.png");
+					
+			auto animation = Animation::create();
 			animation->setDelayPerUnit(0.2f);
-			for(int i=0;i<4;i++)
-				animation->addSpriteFrameWithTexture(texture,CCRectMake(i*32,0,32,32));
-			CCAnimate *animate=CCAnimate::create(animation);
-			CCFiniteTimeAction *animateOver=CCCallFunc::create(this,callfunc_selector(FlyScene::explosionEndDid));
-			CCFiniteTimeAction *seq=CCSequence::create(animate,animateOver,NULL);
+			for(int i=0; i<4; ++ i) {
+				animation->addSpriteFrameWithTexture(texture, Rect(i*32, 0, 32, 32));
+			}
+				
+			Animate *animate = Animate::create(animation);
+			FiniteTimeAction *animateOver = CallFunc::create(this, callfunc_selector(FlyScene::explosionEndDid));
+			FiniteTimeAction *seq = Sequence::create(animate, animateOver, NULL);
 
-			explosion=CCSprite::createWithTexture(texture,CCRectMake(0,0,32,32));
-			this->addChild(explosion);
-			explosion->setPosition(plane->getPosition());
-			explosion->runAction(seq);			
+			_explosion = Sprite::createWithTexture(texture,Rect(0,0,32,32));
+			this->addChild(_explosion);
+			_explosion->setPosition(_plane->getPosition());
+			_explosion->runAction(seq);			
 
-			if(g_isPlaySoundEffect)
-			CocosDenshion::SimpleAudioEngine::sharedEngine()->playEffect("explosion.wav");
-
+			//if(g_isPlaySoundEffect) {
+				//CocosDenshion::SimpleAudioEngine::sharedEngine()->playEffect("explosion.wav");
+			//}
+			
 			break;
-		}
-		else if (!screen.containsPoint(position))
-		{//离开屏幕就删除
+		}else if (!screen.containsPoint(position)) {
 			this->removeChild(bullet, true);
-			bitr=bullets.erase(bitr);
-		}
-		else
-		{
-			bitr++;
+			will_delete_bullets->addObject(bullet);
 		}
 	}
+
+	_bullets->removeObjectsInArray(will_delete_bullets);
 }
 
 void FlyScene::saveTime( float dt )
@@ -321,7 +250,7 @@ void FlyScene::saveTime( float dt )
 
 void FlyScene::explosionEndDid()
 {
-	explosion->setVisible(false);
-	CCScene *scene=GameOverScene::scene();
-	CCDirector::sharedDirector()->replaceScene(CCTransitionFade::create(1.2f,scene));
+	_explosion->setVisible(false);
+	auto scene = GameOverScene::scene();
+	Director::getInstance()->replaceScene(TransitionFade::create(1.2f, scene));
 }

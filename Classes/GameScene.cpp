@@ -62,12 +62,12 @@ void GameLayer::menuCloseCallback(Object* pSender)
 
 void GameLayer::menuNewCallback(Object* pSender)
 {
-		CCScene *scene = FlyScene::scene();
-	CCDirector::sharedDirector()->replaceScene(CCTransitionCrossFade::create(1.2f,scene));
+	Scene *scene = FlyScene::scene();
+	Director::getInstance()->replaceScene(CCTransitionCrossFade::create(1.2f,scene));
 }
 
 void GameLayer::menuSettingCallback(Object* pSender)
 {
-		CCScene *scene=SettingScene::scene();
-	CCDirector::sharedDirector()->replaceScene(CCTransitionFlipX::create(1.2f,scene));
+	Scene *scene=SettingScene::scene();
+	Director::getInstance()->replaceScene(CCTransitionFlipX::create(1.2f,scene));
 }

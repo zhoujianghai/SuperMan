@@ -50,26 +50,4 @@
 		<nature>org.eclipse.cdt.managedbuilder.core.managedBuildNature</nature>
 		<nature>org.eclipse.cdt.managedbuilder.core.ScannerConfigNature</nature>
 	</natures>
-	<linkedResources>
-		<link>
-			<name>Classes</name>
-			<type>2</type>
-			<locationURI>COCOS2DX/projects/SuperMan/Classes</locationURI>
-		</link>
-		<link>
-			<name>cocos2dx</name>
-			<type>2</type>
-			<locationURI>COCOS2DX/cocos2dx</locationURI>
-		</link>
-		<link>
-			<name>extensions</name>
-			<type>2</type>
-			<locationURI>COCOS2DX/extensions</locationURI>
-		</link>
-		<link>
-			<name>scripting</name>
-			<type>2</type>
-			<locationURI>COCOS2DX/scripting</locationURI>
-		</link>
-	</linkedResources>
 </projectDescription>
