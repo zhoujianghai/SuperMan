@@ -3,8 +3,12 @@
 #include "GameOverScene.h"
 #include "global.h"
 #include "tools.h"
+#include "bullet.h"
+#include "plane.h"
+#include "cocos-ext.h"
 
 using namespace cocos2d;
+using namespace cocos2d::extension;
 using namespace std;
 
 bool FlyScene::init()
@@ -14,39 +18,50 @@ bool FlyScene::init()
 	{
 		CC_BREAK_IF(! Layer::init());
 
-		Size s = Director::sharedDirector()->getWinSize();	
+		auto visibleSize = Director::getInstance()->getVisibleSize();
+		auto origin = Director::getInstance()->getVisibleOrigin();
+		int index = (int)(rand() % 5 + 1);
+		const char* bg_name = String::createWithFormat("img_bg_%d.jpg", index)->getCString();
+		//log("bg_name=%s", bg_name);
+		auto background = Sprite::create(bg_name);
+		background->setPosition(Point(visibleSize.width/2 + origin.x, visibleSize.height/2 + origin.y));
+		this->addChild(background, -1);
 
-		//返回
-		MenuItemFont::setFontSize(22);
-		MenuItemFont::setFontName("American Typewriter");
 
-		auto systemMenu = MenuItemFont::create("Back", CC_CALLBACK_1(FlyScene::menuReturnCallback, this));
-		auto mn = Menu::create(systemMenu, NULL);
-		mn->setPosition(ccp(0,0));
-		systemMenu->setAnchorPoint(ccp(1, 0));
-		systemMenu->setPosition(ccp(s.width, 0));
-		this->addChild(mn,1);
+		SpriteFrameCache::getInstance()->addSpriteFramesWithFile("commons.plist");
+		_sprite_batch = SpriteBatchNode::create("commons.png");
+		this->addChild(_sprite_batch);
 
-		//飞机
-		auto textureCache = Director::getInstance()->getTextureCache();
-		auto planeTexture = textureCache->addImage("plane.png");
-		_plane = Sprite::createWithTexture(planeTexture);
-		_plane->setPosition(ccp(s.width/2, s.height/2));
-		this->addChild(_plane, 0);
+		auto pause_menu_item = MenuItemImage::create("", "", CC_CALLBACK_1(FlyScene::pausePressed, this));
+		pause_menu_item->setNormalSpriteFrame(SpriteFrameCache::getInstance()->getSpriteFrameByName("pause.png"));
+		pause_menu_item->setPosition(Point(origin.x + visibleSize.width - pause_menu_item->getContentSize().width / 2, origin.y + visibleSize.height - pause_menu_item->getContentSize().height / 2));
+		auto pauseMenu = Menu::create(pause_menu_item, NULL);
+		pauseMenu->setPosition(Point::ZERO);
+		this->addChild(pauseMenu, 1);
 
-		//开启触摸
+		_scoreLabel =  LabelAtlas::create("0", "img_num_dis.png", 22, 28, '0');
+		_scoreLabel->setPosition(Point(origin.x + visibleSize.width / 2 - _scoreLabel->getContentSize().width / 2, origin.y + visibleSize.height - _scoreLabel->getContentSize().height - 5));
+		this->addChild(_scoreLabel);
+
+		//auto hp_sprite = Scale9Sprite::createWithSpriteFrameName("content_bg.png");
+		//hp_sprite->setPosition(Point(origin.x + visibleSize.width / 2, origin.y + visibleSize.height / 2));
+		//hp_sprite->setPreferredSize(Size(200, 300));
+		//this->addChild(hp_sprite);
+
+		_plane = Plane::create();
+		_plane->setPosition(Point(origin.x + visibleSize.width / 2, origin.y + visibleSize.height / 2));
+		_sprite_batch->addChild(_plane);
+
 		auto listener = EventListenerTouchAllAtOnce::create();
 		listener->onTouchesBegan = CC_CALLBACK_2(FlyScene::onTouchesBegan, this);
 		listener->onTouchesMoved = CC_CALLBACK_2(FlyScene::onTouchesMoved, this);
 		listener->onTouchesEnded = CC_CALLBACK_2(FlyScene::onTouchesEnded, this); 
 		_eventDispatcher->addEventListenerWithSceneGraphPriority(listener, this);
 
-		//开启逻辑
 		this->schedule(schedule_selector(FlyScene::createBullet));
 		this->schedule(schedule_selector(FlyScene::checkBullet));
 		this->schedule(SEL_SCHEDULE(&FlyScene::saveTime),1);
 
-		//清零数据
 		isFlying = false;
 		g_gameTime = 0;
 		_bullets = Array::create();
@@ -58,7 +73,12 @@ bool FlyScene::init()
 	return bRet;
 }
 
-cocos2d::Scene* FlyScene::scene()
+void FlyScene::pausePressed(cocos2d::Object *pSender)
+{
+
+}
+
+Scene* FlyScene::scene()
 {
 	Scene * scene = NULL;
 	do 
@@ -129,67 +149,14 @@ void FlyScene::createBullet( float dt )
 		return;
 	}
 
-	auto textureCache = Director::getInstance()->getTextureCache();
-	const char *bullet_name = rand()%2 > 0 ? "bullet_1.png" : "bullet_2.png";
-	auto bulletTexture = textureCache->addImage(bullet_name);
-
-	auto bullet = Sprite::createWithTexture(bulletTexture);
-	this->addChild(bullet, 0);
+	Bullet* bullet = Bullet::create();
+	_sprite_batch->addChild(bullet);
 	_bullets->addObject(bullet);
-
-	float x, y;
-	int speedX, speedY;
-	Size size = Director::getInstance()->getWinSize();
-
-	int direction = abs(rand() % 4);
-	int speedUnit = 6;
-	switch(direction)
-	{
-	case SCREEN_DIR_UP:
-		{
-			x = abs(rand()%(int)size.width);
-			y = size.height - bullet->getContentSize().height;
-			speedX = rand()%speedUnit;
-			speedY = (abs(rand()%speedUnit + 1)) * (-1);
-			break;
-		}
-
-	case SCREEN_DIR_DOWN:
-		{
-			x = abs(rand()%(int)size.width);
-			y = bullet->getContentSize().height;
-			speedX = rand()%speedUnit;
-			speedY = abs(rand()%speedUnit+1);
-			break;
-		}
-
-	case SCREEN_DIR_LEFT:
-		{
-			x = bullet->getContentSize().width;
-			y = abs(rand()%(int)size.height);
-			speedX = abs(rand()%speedUnit+1);
-			speedY=rand()%speedUnit;
-			break;
-		}
-
-	case SCREEN_DIR_RIGHT:
-		{
-			x = size.width - bullet->getContentSize().width;
-			y = abs(rand()%(int)size.height);
-			speedX = abs(rand()%speedUnit+1) * (-1);
-			speedY = rand()%speedUnit;
-			break;
-		}
-	}
-
-	bullet->setPosition(ccp(x,y));
-	auto action = MoveBy::create(0.1f, ccp(speedX, speedY));
-	bullet->runAction(RepeatForever::create(action));
 }
 
 void FlyScene::checkBullet(float dt)
 {
-	if (!_plane->isVisible())
+	if (!_plane->isVisible() || _bullets->count() == 0)
 	{
 		return;
 	}
@@ -201,13 +168,13 @@ void FlyScene::checkBullet(float dt)
 	Array *will_delete_bullets = Array::create();
 	CCARRAY_FOREACH(_bullets, bulletObj)
 	{
-		Sprite *bullet = (Sprite*)bulletObj;
+		Bullet *bullet = (Bullet*)bulletObj;
 		Point position = bullet->getPosition();
 		Rect bulletBox = bullet->getBoundingBox();
 
 		if (planeBox.intersectsRect(bulletBox))
 		{
-			will_delete_bullets->addObject(bullet);
+/*			will_delete_bullets->addObject(bullet);
 			this->removeChild(bullet, true);
 			_plane->setVisible(false);
 
@@ -227,25 +194,39 @@ void FlyScene::checkBullet(float dt)
 			_explosion = Sprite::createWithTexture(texture,Rect(0,0,32,32));
 			this->addChild(_explosion);
 			_explosion->setPosition(_plane->getPosition());
-			_explosion->runAction(seq);			
+			_explosion->runAction(seq);		*/	
 
 			//if(g_isPlaySoundEffect) {
 				//CocosDenshion::SimpleAudioEngine::sharedEngine()->playEffect("explosion.wav");
 			//}
-			
+			g_gameTime = 0;
+			_scoreLabel->setString("0");
 			break;
 		}else if (!screen.containsPoint(position)) {
-			this->removeChild(bullet, true);
+			_sprite_batch->removeChild(bullet, true);
 			will_delete_bullets->addObject(bullet);
+			break;
 		}
+		Point new_pos = Point(position.x + bullet->get_speed_x(), position.y + bullet->get_speed_y());
+		bullet->setPosition(new_pos);
 	}
 
-	_bullets->removeObjectsInArray(will_delete_bullets);
+	if(will_delete_bullets->count() > 0) {
+		_bullets->removeObjectsInArray(will_delete_bullets);
+	}
+
 }
 
 void FlyScene::saveTime( float dt )
 {
-	g_gameTime+=dt;
+	g_gameTime += dt;
+	if(_scoreLabel) {
+		char tmp[4];
+		sprintf(tmp, "%d", g_gameTime);
+		string scoreStr(tmp);
+		//log("score=%s", scoreStr.c_str());
+		_scoreLabel->setString(scoreStr);
+	}
 }
 
 void FlyScene::explosionEndDid()

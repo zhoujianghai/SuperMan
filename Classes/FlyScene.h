@@ -13,6 +13,7 @@ typedef enum
 	SCREEN_DIR_RIGHT
 }SCREEN_DIR;
 
+class Plane;
 class FlyScene: public cocos2d::Layer
 {
 public:
@@ -26,6 +27,8 @@ public:
 	void onTouchesMoved(const std::vector<cocos2d::Touch*>& touches, cocos2d::Event *unused_event);
 	void onTouchesEnded(const std::vector<cocos2d::Touch*>& touches, cocos2d::Event *unused_event);
 
+	void pausePressed(cocos2d::Object *pSender);
+
 	// implement the "static node()" method manually
 	CREATE_FUNC(FlyScene);
 private:
@@ -38,13 +41,15 @@ private:
 
 
 	//飞机相关
-	cocos2d::Sprite *_plane;
+	Plane *_plane;
 	bool isFlying;	
 
 	//子弹相关
 	cocos2d::Array *_bullets;
+	cocos2d::SpriteBatchNode* _sprite_batch;
 
 	//爆炸相关
 	cocos2d::Sprite *_explosion;
+	cocos2d::LabelAtlas *_scoreLabel;
 };
 #endif  // __FLYSCENE_SCENE_H__

@@ -31,7 +31,7 @@ bool GameLayer::init()
     Size visibleSize = Director::getInstance()->getVisibleSize();
     Point origin = Director::getInstance()->getVisibleOrigin();
 
-    auto sprite = Sprite::create("background.png");
+    auto sprite = Sprite::create("index_bg.jpg");
     sprite->setPosition(Point(visibleSize.width/2 + origin.x, visibleSize.height/2 + origin.y));
     this->addChild(sprite, 0);
 

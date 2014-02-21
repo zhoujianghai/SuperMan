@@ -3,7 +3,7 @@
 
 #include "cocos2d.h"
 
-extern float g_gameTime;
+extern int g_gameTime;
 
 extern int g_bulletNum;
 
