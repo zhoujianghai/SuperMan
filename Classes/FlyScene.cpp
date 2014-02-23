@@ -1,5 +1,5 @@
 #include "FlyScene.h"
-#include "GameScene.h"
+#include "WelcomeScene.h"
 #include "GameOverScene.h"
 #include "global.h"
 #include "tools.h"
@@ -50,7 +50,8 @@ bool FlyScene::init()
 
 		_plane = Plane::create();
 		_plane->setPosition(Point(origin.x + visibleSize.width / 2, origin.y + visibleSize.height / 2));
-		_sprite_batch->addChild(_plane);
+		//_sprite_batch->addChild(_plane, 100);
+		this->addChild(_plane, 100);
 
 		auto listener = EventListenerTouchAllAtOnce::create();
 		listener->onTouchesBegan = CC_CALLBACK_2(FlyScene::onTouchesBegan, this);
@@ -75,7 +76,8 @@ bool FlyScene::init()
 
 void FlyScene::pausePressed(cocos2d::Object *pSender)
 {
-
+	auto scene = WelcomeScene::createScene();
+	Director::sharedDirector()->replaceScene(TransitionFlipX::create(1.2f, scene));
 }
 
 Scene* FlyScene::scene()
@@ -101,8 +103,7 @@ Scene* FlyScene::scene()
 
 void FlyScene::menuReturnCallback( Object *pSender )
 {
-	auto scene = GameScene::createScene();
-	Director::sharedDirector()->replaceScene(TransitionFlipX::create(1.2f, scene));
+
 }
 
 void FlyScene::onTouchesBegan(const vector<Touch*>& touches, Event *unused_event)
