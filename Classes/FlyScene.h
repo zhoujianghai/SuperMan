@@ -5,6 +5,7 @@
 #include "cocos2d.h"
 #include "SimpleAudioEngine.h"
 
+
 typedef enum
 {
 	SCREEN_DIR_UP = 0,
@@ -39,17 +40,27 @@ private:
 	void saveTime(float dt);
 	void explosionEndDid();
 
-
-	//飞机相关
 	Plane *_plane;
 	bool isFlying;	
 
-	//子弹相关
 	cocos2d::Array *_bullets;
 	cocos2d::SpriteBatchNode* _sprite_batch;
 
-	//爆炸相关
 	cocos2d::Sprite *_explosion;
 	cocos2d::LabelAtlas *_scoreLabel;
 };
+
+class GameOverLayer : public cocos2d::LayerColor
+{
+public:
+	GameOverLayer();
+	virtual ~GameOverLayer();
+
+	bool init();
+
+	void menuNewCallback(Object* pSender);
+
+	CREATE_FUNC(GameOverLayer);
+};
+
 #endif  // __FLYSCENE_SCENE_H__
