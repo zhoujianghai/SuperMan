@@ -14,3 +14,13 @@ void cocos_android_app_init (struct android_app* app) {
     LOGD("cocos_android_app_init");
     AppDelegate *pAppDelegate = new AppDelegate();
 }
+
+void showAds(bool show)
+{
+	JniMethodInfo t;
+	if(JniHelper::getStaticMethodInfo(t, "com/alexzhou/superman/SuperManActivity", "changeAdShow", "(Z)V"))
+	{
+		jboolean jshow = show;
+	    t.env->CallStaticVoidMethod(t.classID, t.methodID, jshow);
+	}
+}

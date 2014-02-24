@@ -1,15 +1,17 @@
 #include "FlyScene.h"
-#include "GameScene.h"
+#include "WelcomeScene.h"
 #include "GameOverScene.h"
 #include "global.h"
 #include "tools.h"
 #include "bullet.h"
 #include "plane.h"
-#include "cocos-ext.h"
 
 using namespace cocos2d;
-using namespace cocos2d::extension;
 using namespace std;
+
+#if (CC_TARGET_PLATFORM == CC_PLATFORM_ANDROID)
+extern void showAds(bool show);
+#endif
 
 bool FlyScene::init()
 {
@@ -32,25 +34,21 @@ bool FlyScene::init()
 		_sprite_batch = SpriteBatchNode::create("commons.png");
 		this->addChild(_sprite_batch);
 
-		auto pause_menu_item = MenuItemImage::create("", "", CC_CALLBACK_1(FlyScene::pausePressed, this));
-		pause_menu_item->setNormalSpriteFrame(SpriteFrameCache::getInstance()->getSpriteFrameByName("pause.png"));
-		pause_menu_item->setPosition(Point(origin.x + visibleSize.width - pause_menu_item->getContentSize().width / 2, origin.y + visibleSize.height - pause_menu_item->getContentSize().height / 2));
-		auto pauseMenu = Menu::create(pause_menu_item, NULL);
-		pauseMenu->setPosition(Point::ZERO);
-		this->addChild(pauseMenu, 1);
+		//auto pause_menu_item = MenuItemImage::create("", "", CC_CALLBACK_1(FlyScene::pausePressed, this));
+		//pause_menu_item->setNormalSpriteFrame(SpriteFrameCache::getInstance()->getSpriteFrameByName("pause.png"));
+		//pause_menu_item->setPosition(Point(origin.x + visibleSize.width - pause_menu_item->getContentSize().width / 2, origin.y + visibleSize.height - pause_menu_item->getContentSize().height / 2));
+		//auto pauseMenu = Menu::create(pause_menu_item, NULL);
+		//pauseMenu->setPosition(Point::ZERO);
+		//this->addChild(pauseMenu, 1);
 
 		_scoreLabel =  LabelAtlas::create("0", "img_num_dis.png", 22, 28, '0');
 		_scoreLabel->setPosition(Point(origin.x + visibleSize.width / 2 - _scoreLabel->getContentSize().width / 2, origin.y + visibleSize.height - _scoreLabel->getContentSize().height - 5));
 		this->addChild(_scoreLabel);
 
-		//auto hp_sprite = Scale9Sprite::createWithSpriteFrameName("content_bg.png");
-		//hp_sprite->setPosition(Point(origin.x + visibleSize.width / 2, origin.y + visibleSize.height / 2));
-		//hp_sprite->setPreferredSize(Size(200, 300));
-		//this->addChild(hp_sprite);
-
 		_plane = Plane::create();
 		_plane->setPosition(Point(origin.x + visibleSize.width / 2, origin.y + visibleSize.height / 2));
-		_sprite_batch->addChild(_plane);
+		//_sprite_batch->addChild(_plane, 100);
+		this->addChild(_plane, 100);
 
 		auto listener = EventListenerTouchAllAtOnce::create();
 		listener->onTouchesBegan = CC_CALLBACK_2(FlyScene::onTouchesBegan, this);
@@ -67,6 +65,10 @@ bool FlyScene::init()
 		_bullets = Array::create();
 		_bullets->retain();
 
+	#if (CC_TARGET_PLATFORM == CC_PLATFORM_ANDROID)
+		showAds(false);
+	#endif
+
 		bRet = true;
 	}while(0);
 
@@ -75,7 +77,8 @@ bool FlyScene::init()
 
 void FlyScene::pausePressed(cocos2d::Object *pSender)
 {
-
+	auto scene = WelcomeScene::createScene();
+	Director::sharedDirector()->replaceScene(TransitionFlipX::create(1.2f, scene));
 }
 
 Scene* FlyScene::scene()
@@ -101,8 +104,7 @@ Scene* FlyScene::scene()
 
 void FlyScene::menuReturnCallback( Object *pSender )
 {
-	auto scene = GameScene::createScene();
-	Director::sharedDirector()->replaceScene(TransitionFlipX::create(1.2f, scene));
+
 }
 
 void FlyScene::onTouchesBegan(const vector<Touch*>& touches, Event *unused_event)
@@ -166,6 +168,8 @@ void FlyScene::checkBullet(float dt)
 	Rect planeBox = _plane->getBoundingBox();
 	Object *bulletObj = NULL;
 	Array *will_delete_bullets = Array::create();
+	bool isGameOver = false;
+
 	CCARRAY_FOREACH(_bullets, bulletObj)
 	{
 		Bullet *bullet = (Bullet*)bulletObj;
@@ -200,7 +204,20 @@ void FlyScene::checkBullet(float dt)
 				//CocosDenshion::SimpleAudioEngine::sharedEngine()->playEffect("explosion.wav");
 			//}
 			g_gameTime = 0;
-			_scoreLabel->setString("0");
+			_scoreLabel->setVisible(false);
+			_plane->setVisible(false);
+
+			auto particleSprite = Sprite::create("explosion.png");
+			this->addChild(particleSprite);
+
+			auto particleEmitter = ParticleSystemQuad::create("explosion.plist");
+			particleEmitter->setPosition(_plane->getPosition());
+			auto particleBatch = ParticleBatchNode::createWithTexture(particleEmitter->getTexture());
+			particleBatch->addChild(particleEmitter);
+			this->addChild(particleBatch, 10);
+
+			isGameOver = true;
+
 			break;
 		}else if (!screen.containsPoint(position)) {
 			_sprite_batch->removeChild(bullet, true);
@@ -215,23 +232,97 @@ void FlyScene::checkBullet(float dt)
 		_bullets->removeObjectsInArray(will_delete_bullets);
 	}
 
+	if(isGameOver) {
+		_sprite_batch->removeAllChildren();
+		_bullets->removeAllObjects();
+		this->runAction(Sequence::create(DelayTime::create(1), CallFunc::create(CC_CALLBACK_0(FlyScene::explosionEndDid, this)),  NULL));
+	}
+
 }
 
 void FlyScene::saveTime( float dt )
 {
-	g_gameTime += dt;
-	if(_scoreLabel) {
+	if( _plane->isVisible()) {
+		g_gameTime += dt;
+		if(_scoreLabel) {
 		char tmp[4];
 		sprintf(tmp, "%d", g_gameTime);
 		string scoreStr(tmp);
 		//log("score=%s", scoreStr.c_str());
 		_scoreLabel->setString(scoreStr);
+		}
 	}
 }
 
 void FlyScene::explosionEndDid()
 {
-	_explosion->setVisible(false);
-	auto scene = GameOverScene::scene();
-	Director::getInstance()->replaceScene(TransitionFade::create(1.2f, scene));
+	//_explosion->setVisible(false);
+	auto scene = Director::getInstance()->getRunningScene();
+	auto layer = GameOverLayer::create();
+	scene->addChild(layer);
+
+	#if (CC_TARGET_PLATFORM == CC_PLATFORM_ANDROID)
+		showAds(true);
+	#endif
+	//Director::getInstance()->replaceScene(TransitionFade::create(1.2f, scene));
+}
+
+GameOverLayer::GameOverLayer()
+{
+
+}
+
+GameOverLayer::~GameOverLayer()
+{
+
+}
+
+bool GameOverLayer::init()
+{
+	bool ret = false;
+	do {
+		CC_BREAK_IF( !this->initWithColor(Color4B(105, 105, 105, 128)) );
+		Size visibleSize = Director::getInstance()->getVisibleSize();
+		Point origin = Director::getInstance()->getVisibleOrigin();
+		
+		auto title = Sprite::create("gameover.png");
+		title->setPosition(Point(origin.x + visibleSize.width / 2, origin.y + visibleSize.height - title->getContentSize().height / 2 - 200));
+		this->addChild(title);
+
+		auto scorePanel = Sprite::create("base.png");
+		scorePanel->setPosition(Point(origin.x + visibleSize.width / 2, title->getPositionY() - title->getContentSize().height / 2 - scorePanel->getContentSize().height / 2 - 50));
+
+		auto oldScoreLabel =  LabelAtlas::create("0", "number2.png", 54, 79, '0');
+		oldScoreLabel->setPosition(Point(scorePanel->getContentSize().width - 140, 30));
+		scorePanel->addChild(oldScoreLabel);
+		//oldScoreLabel->setScale(0.9f);
+		
+		auto newScoreLabel =  LabelAtlas::create("2", "number2.png", 54, 79, '0');
+		newScoreLabel->setPosition(Point(scorePanel->getContentSize().width - 140, 142));
+		scorePanel->addChild(newScoreLabel);
+		//newScoreLabel->setScale(0.9f);
+
+		this->addChild(scorePanel);
+
+
+		auto startBtnItem = MenuItemImage::create("btn_yellow.png", "btn_yellow_pressed.png", CC_CALLBACK_1(GameOverLayer::menuNewCallback, this));
+		startBtnItem->setPosition(Point(origin.x + visibleSize.width / 2, origin.y + startBtnItem->getContentSize().height / 2 + 150));
+		auto startMenu = Menu::create(startBtnItem, NULL);
+		startMenu->setPosition(Point::ZERO);
+		this->addChild(startMenu);
+
+		auto startBtnText = Sprite::create("start_game_text.png");
+		startBtnText->setPosition(startBtnItem->getPosition());
+		this->addChild(startBtnText);
+
+		ret = true;
+	}while(0);
+
+	return ret;
+}
+
+void GameOverLayer::menuNewCallback(Object* pSender)
+{
+	Scene *scene = FlyScene::scene();
+	Director::getInstance()->replaceScene(scene);
 }

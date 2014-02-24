@@ -1,5 +1,5 @@
 #include "AppDelegate.h"
-#include "GameScene.h"
+#include "WelcomeScene.h"
 
 USING_NS_CC;
 
@@ -17,16 +17,16 @@ bool AppDelegate::applicationDidFinishLaunching() {
     auto eglView = EGLView::getInstance();
 
     director->setOpenGLView(eglView);
-	eglView->setDesignResolutionSize(512, 768, ResolutionPolicy::SHOW_ALL);
-	
+	//eglView->setDesignResolutionSize(512, 768, ResolutionPolicy::SHOW_ALL);
+	eglView->setDesignResolutionSize(720, 1280, ResolutionPolicy::SHOW_ALL);
     // turn on display FPS
-    director->setDisplayStats(true);
+    director->setDisplayStats(false);
 
     // set FPS. the default value is 1.0/60 if you don't call this
     director->setAnimationInterval(1.0 / 60);
 
     // create a scene. it's an autorelease object
-    auto scene = GameScene::createScene();
+    auto scene = WelcomeScene::createScene();
 
     // run
     director->runWithScene(scene);

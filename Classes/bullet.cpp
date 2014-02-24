@@ -26,7 +26,7 @@ bool Bullet::init()
 		auto origin = Director::getInstance()->getVisibleOrigin();
 
 		const int direction = abs(rand() % 4);
-		const int speedUnit = 6;
+		const int speedUnit = 4;
 		float x = 0, y = 0;
 		Size bullet_show_size = this->getDisplayFrame()->getRect().size;
 		switch(direction) {
