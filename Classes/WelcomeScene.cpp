@@ -40,11 +40,12 @@ bool WelcomeLayer::init()
     bgSprite->setPosition(Point(visibleSize.width/2 + origin.x, visibleSize.height/2 + origin.y));
     this->addChild(bgSprite, 0);
 
-	auto titleSprite= Sprite::create("flappybird.png");
-	titleSprite->setPosition(Point(origin.x + visibleSize.width / 2, origin.y + visibleSize.height - titleSprite->getContentSize().height / 2 - 200));
+	auto titleSprite= Sprite::create("LOGO.png");
+	titleSprite->setPosition(Point(origin.x + visibleSize.width / 2, origin.y + visibleSize.height - titleSprite->getContentSize().height / 2 - 160));
 	this->addChild(titleSprite);
 
 	auto planeSprite = Sprite::create("plane_small.png");
+	planeSprite->setScale(2.0f);
 	planeSprite->setPosition(Point(origin.x + visibleSize.width / 2, origin.y + titleSprite->getPositionY() - titleSprite->getContentSize().height - planeSprite->getContentSize().height / 2 - 100));
 	this->addChild(planeSprite);
 
@@ -62,13 +63,19 @@ bool WelcomeLayer::init()
 	startBtnText->setPosition(startBtnItem->getPosition());
 	this->addChild(startBtnText);
 
-	auto snowSprite2 = Sprite::create("snow.png");
-	snowSprite2->setPosition(startBtnItem->getPosition());
-	snowSprite2->runAction(RepeatForever::create(Sequence::create(FadeIn::create(1.0f), FadeOut::create(0.5f), NULL)));
-	this->addChild(snowSprite2);
+	//auto snowSprite2 = Sprite::create("snow.png");
+	//snowSprite2->setPosition(startBtnItem->getPosition());
+	//snowSprite2->runAction(RepeatForever::create(Sequence::create(FadeIn::create(1.0f), FadeOut::create(0.5f), NULL)));
+	//this->addChild(snowSprite2);
 
-	auto particleSprite = Sprite::create("snow.png");
-	this->addChild(particleSprite);
+	auto btnParticleEmitter = ParticleSystemQuad::create("btn_snow.plist");
+	btnParticleEmitter->setPosition(Point(startBtnItem->getPositionX(), startBtnItem->getPositionY() - startBtnItem->getContentSize().height / 2 + 20));
+	auto btnParticleBatch = ParticleBatchNode::createWithTexture(btnParticleEmitter->getTexture());
+	btnParticleBatch->addChild(btnParticleEmitter);
+	this->addChild(btnParticleBatch, 5);
+
+	//auto particleSprite = Sprite::create("snow.png");
+	//this->addChild(particleSprite);
 
 	auto particleEmitter = ParticleSystemQuad::create("snow.plist");
 	particleEmitter->setPosition(Point(origin.x + visibleSize.width / 2, origin.y + visibleSize.height + 5));
@@ -76,9 +83,11 @@ bool WelcomeLayer::init()
 	particleBatch->addChild(particleEmitter);
 	this->addChild(particleBatch, 5);
 
+
+
 	auto sunParticle = ParticleSun::createWithTotalParticles(20);
     sunParticle->setTexture( Director::getInstance()->getTextureCache()->addImage("fire.png") );
-	sunParticle->setPosition(Point(planeSprite->getPositionX(), planeSprite->getPositionY() - planeSprite->getContentSize().height / 2 - 10));
+	sunParticle->setPosition(Point(planeSprite->getPositionX(), planeSprite->getPositionY() - planeSprite->getContentSize().height / 2 - 30));
 	this->addChild(sunParticle, 10);
 
 	auto starSprite = Sprite::create("snow.png");
@@ -90,10 +99,23 @@ bool WelcomeLayer::init()
 	_emitter->setPosition(Point(startBtnItem->getPosition().x - startBtnItem->getContentSize().width / 2 - 2, startBtnItem->getPosition().y  - startBtnItem->getContentSize().height / 2 + 3));
 
 	float X = 2;
-	auto path = MyPathFun(X, startBtnItem->getContentSize().height, startBtnItem->getContentSize().width - 2 * X /*+ starSprite->getContentSize().width*/);
+	auto path = MyPathFun(X, startBtnItem->getContentSize().height, startBtnItem->getContentSize().width - 2 * X, true);
 
 	starSprite->runAction(path);
 	_emitter->runAction(path->clone());
+
+	auto starSprite2 = Sprite::create("snow.png");
+	starSprite2->setScale(0.4f);
+	starSprite2->setPosition(Point(startBtnItem->getPosition().x + startBtnItem->getContentSize().width / 2, startBtnItem->getPosition().y + startBtnItem->getContentSize().height / 2));	
+	this->addChild(starSprite2, 10);
+
+	auto _emitter2 = particleInit();
+	_emitter2->setPosition(Point(startBtnItem->getPosition().x + startBtnItem->getContentSize().width / 2 - 2, startBtnItem->getPosition().y  + startBtnItem->getContentSize().height / 2 + 3));
+	auto path2 = MyPathFun(X, startBtnItem->getContentSize().height, startBtnItem->getContentSize().width - 2 * X, false);
+
+	starSprite2->runAction(path2);
+	_emitter2->runAction(path2->clone());
+
 
 	#if (CC_TARGET_PLATFORM == CC_PLATFORM_ANDROID)
 		showAds(true);
@@ -121,7 +143,7 @@ void WelcomeLayer::menuNewCallback(Object* pSender)
 
 ParticleSystem* WelcomeLayer::particleInit(){
 	auto _emitter = new ParticleSystemQuad();
-	_emitter->initWithTotalParticles(50);
+	_emitter->initWithTotalParticles(100);
 	addChild(_emitter, 10);
 	_emitter->setTexture(Director::getInstance()->getTextureCache()->addImage("point.png"));
 	_emitter->setAnchorPoint(Point(0, 0));
@@ -150,7 +172,7 @@ ParticleSystem* WelcomeLayer::particleInit(){
 	_emitter->setPosVar(Point::ZERO);
 
 	// life of particles
-	_emitter->setLife(0.5);
+	_emitter->setLife(1.0);
 	_emitter->setLifeVar(0);
 
 	// spin of particles
@@ -174,7 +196,7 @@ ParticleSystem* WelcomeLayer::particleInit(){
 	//Color4F setStartColor(Color4F(Color4B(50, 50, 50, 50)));
 	//Color4F setEndColor(Color4F(Color4B(0, 0, 0, 0)));
 	// size, in pixels
-	_emitter->setStartSize(16);
+	_emitter->setStartSize(15);
 	_emitter->setStartSizeVar(1);
 	_emitter->setEndSize(0);
 
@@ -187,22 +209,40 @@ ParticleSystem* WelcomeLayer::particleInit(){
 	return _emitter;
 }
 
-RepeatForever* WelcomeLayer::MyPathFun(float controlX, float controlY, float w)
+RepeatForever* WelcomeLayer::MyPathFun(float controlX, float controlY, float w,  bool isClockwise)
 {
 	ccBezierConfig bezier1;
-	bezier1.controlPoint_1 = Point(-controlX, 0);
-	bezier1.controlPoint_2 = Point(-controlX, controlY);
-	bezier1.endPosition = Point(0, controlY);
+	if(isClockwise) {
+		bezier1.controlPoint_1 = Point(-controlX, 0);
+		bezier1.controlPoint_2 = Point(-controlX, controlY);
+		bezier1.endPosition = Point(0, controlY);
+	} else {
+			bezier1.controlPoint_1 = Point(controlX, 0);
+			bezier1.controlPoint_2 = Point(controlX, -controlY);
+			bezier1.endPosition = Point(0, -controlY);
+	}
+
 	auto bezierBy1 = BezierBy::create(0.8f, bezier1);
 
-	auto move1 = MoveBy::create(2.0f, Point(w, 0));
+	float t_w = w;
+	if(!isClockwise) {
+		t_w = -w;
+	}
+	auto move1 = MoveBy::create(1.0f, Point(t_w, 0));
 
 	ccBezierConfig bezier2;
-	bezier2.controlPoint_1 = Point(controlX, 0);
+	if(isClockwise) {
+			bezier2.controlPoint_1 = Point(controlX, 0);
 	bezier2.controlPoint_2 = Point(controlX, -controlY);
 	bezier2.endPosition = Point(0, -controlY);
+	}else {
+					bezier2.controlPoint_1 = Point(-controlX, 0);
+	bezier2.controlPoint_2 = Point(-controlX, controlY);
+	bezier2.endPosition = Point(0, controlY);
+	}
+
 	auto bezierBy2 = BezierBy::create(0.8f, bezier2);
-	auto move2 = MoveBy::create(2.0f, Point(-w, 0));
+	auto move2 = MoveBy::create(1.0f, Point(-t_w, 0));
 	auto path = RepeatForever::create(Sequence::create(bezierBy1, move1, bezierBy2, move2, NULL));
 	return path;
 }

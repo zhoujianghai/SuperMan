@@ -12,6 +12,8 @@ public:
 
 	virtual bool init();
 
+	CC_SYNTHESIZE(cocos2d::Point, m_fVelocity, Velocity);
+
 	CREATE_FUNC(Plane);
 };
 

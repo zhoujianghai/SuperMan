@@ -21,7 +21,9 @@ extern void showAds(bool show);
 FlyScene::FlyScene()
 	:_world(NULL),
 	_contactListener(NULL),
-	_isGameOver(false)
+	_isGameOver(false),
+	m_pJoystick(NULL),
+	m_pJoystickBg(NULL)
 {
 
 }
@@ -77,6 +79,7 @@ bool FlyScene::init()
 
 		this->schedule(schedule_selector(FlyScene::createBullet));
 		this->schedule(schedule_selector(FlyScene::updateBullet));
+		this->schedule(schedule_selector(FlyScene::updatePlane));
 		this->schedule(schedule_selector(FlyScene::updateBoxBody));
 		this->schedule(SEL_SCHEDULE(&FlyScene::updateScore),1);
 
@@ -84,6 +87,13 @@ bool FlyScene::init()
 		g_gameTime = 0;
 		_bullets = Array::create();
 		_bullets->retain();
+
+		m_pJoystick = Sprite::create("joystick.png");
+		m_pJoystickBg = Sprite::create("joystick_bg.png");
+		this->addChild(m_pJoystickBg, 0);
+		this->addChild(m_pJoystick, 1);
+
+		this->hideJoystick();
 
 	#if (CC_TARGET_PLATFORM == CC_PLATFORM_ANDROID)
 		showAds(false);
@@ -164,7 +174,11 @@ void FlyScene::onTouchesBegan(const vector<Touch*>& touches, Event *unused_event
 	if(rect.containsPoint(location))
 	{
 		isFlying = true;
+	}else {
+		this->showJoystick(location);
 	}
+
+	
 	//log("onTouchesBegan");
 }
 
@@ -174,20 +188,32 @@ void FlyScene::onTouchesMoved(const vector<Touch*>& touches, Event *unused_event
 	Touch *pTouch = (Touch*)(*touchIter);
 	Point location = pTouch->getLocation();
 
-	if(isFlying)
-	{
+		Point start = pTouch->getStartLocation();
+	float distance = start.getDistance(location);
+	Point direction = (location - start).normalize();
+	this->updateJoystick(direction, distance);
 		Size size = Director::getInstance()->getWinSize();
 		Rect screen = Rect(0, 0, size.width, size.height);
+	if(isFlying)
+	{
 		if(screen.containsPoint(location)) {
 			_plane->setPosition(location);
 		}
+	}else {
+			Point velocity = direction * (distance < 78 ? 3 : 5);
+			_plane->setVelocity(velocity);
+
+
 	}
+
+
 	//log("onTouchesMoved");
 }
 
 void FlyScene::onTouchesEnded(const vector<Touch*>& touches, Event *unused_event)
 {
 	isFlying = false;
+	this->hideJoystick();
 	//log("onTouchesEnded");
 }
 
@@ -200,12 +226,59 @@ void FlyScene::createBullet( float dt )
 	}
 
 	Bullet* bullet = Bullet::create();
+	float scale = ((rand() % 10) + 6) / 10.0f;
+	if(scale < 0.6f) scale = 0.6f;
+	bullet->setScale(scale);
 	bullet->setTag(SPRITE_BULLET);
 	_sprite_batch->addChild(bullet);
 	_bullets->addObject(bullet);
 
 	//log("createBullet bullet=%p", bullet);
 	this->addBoxBodyForSprite(bullet);
+}
+
+void FlyScene::showJoystick(Point pos)
+{
+	m_pJoystick->setPosition(pos);
+	m_pJoystickBg->setPosition(pos);
+
+	m_pJoystick->setVisible(true);
+	m_pJoystickBg->setVisible(true);
+}
+
+void FlyScene::hideJoystick()
+{
+	m_pJoystick->setPosition(m_pJoystickBg->getPosition());
+	m_pJoystick->setVisible(false);
+	m_pJoystickBg->setVisible(false);
+}
+
+void FlyScene::updateJoystick(Point direction, float distance)
+{
+	Point start = m_pJoystickBg->getPosition();
+
+	if(distance < 33)
+	{
+		m_pJoystick->setPosition(start + (direction * distance));
+	}else if(distance > 78) {
+		m_pJoystick->setPosition(start + (direction * 45));
+	}else {
+		m_pJoystick->setPosition(start + (direction * 33));
+	}
+}
+
+void FlyScene::updatePlane(float dt)
+{
+	if(m_pJoystick && m_pJoystick->isVisible()) {
+				Size size = Director::getInstance()->getWinSize();
+		Rect screen = Rect(0, 0, size.width, size.height);
+		Point planePos = _plane->getPosition();
+		Point expectP = planePos + _plane->getVelocity();
+			if(screen.containsPoint(expectP)) {
+			_plane->setPosition(expectP);
+		}
+	}
+
 }
 
 void FlyScene::updateBoxBody(float dt)
@@ -284,6 +357,7 @@ void FlyScene::updateBoxBody(float dt)
 		this->addChild(particleBatch, 10);
 
 		_sprite_batch->removeAllChildrenWithCleanup(true);
+		_sprite_batch->setVisible(false);
 		_bullets->removeAllObjects();
 		this->runAction(Sequence::create(DelayTime::create(1), CallFunc::create(CC_CALLBACK_0(FlyScene::explosionEndDid, this)),  NULL));
 	}

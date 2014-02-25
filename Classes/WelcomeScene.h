@@ -25,7 +25,7 @@ public:
     // implement the "static create()" method manually
     CREATE_FUNC(WelcomeLayer);
 
-	cocos2d::RepeatForever* MyPathFun(float controlX, float controlY, float w);
+	cocos2d::RepeatForever* MyPathFun(float controlX, float controlY, float w, bool isClockwise);
 	cocos2d::ParticleSystem* particleInit();
 
 };

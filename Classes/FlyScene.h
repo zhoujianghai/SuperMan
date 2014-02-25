@@ -53,10 +53,15 @@ private:
 
 	void createBullet(float dt);
 	void updateBullet(float dt);
+	void updatePlane(float dt);
 	void updateScore(float dt);
 	void updateBoxBody(float dt);
 
 	void explosionEndDid();
+
+	void showJoystick(cocos2d::Point pos);
+	void hideJoystick();
+	void updateJoystick(cocos2d::Point direction, float distance);
 
 	Plane *_plane;
 	bool isFlying;	
@@ -71,6 +76,9 @@ private:
 	MyContactListener *_contactListener;
 
 	bool _isGameOver;
+
+	cocos2d::Sprite *m_pJoystick;
+	cocos2d::Sprite *m_pJoystickBg;
 };
 
 class GameOverLayer : public cocos2d::LayerColor
