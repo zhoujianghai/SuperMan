@@ -5,13 +5,32 @@
 #include "tools.h"
 #include "bullet.h"
 #include "plane.h"
+#include "VisibleRect.h"
+#include "MyContactListener.h"
+
 
 using namespace cocos2d;
 using namespace std;
 
+#define PTM_RATIO 32
+
 #if (CC_TARGET_PLATFORM == CC_PLATFORM_ANDROID)
 extern void showAds(bool show);
 #endif
+
+FlyScene::FlyScene()
+	:_world(NULL),
+	_contactListener(NULL),
+	_isGameOver(false)
+{
+
+}
+
+FlyScene::~FlyScene()
+{
+	CC_SAFE_DELETE(_contactListener);
+	CC_SAFE_DELETE(_world);
+}
 
 bool FlyScene::init()
 {
@@ -34,21 +53,19 @@ bool FlyScene::init()
 		_sprite_batch = SpriteBatchNode::create("commons.png");
 		this->addChild(_sprite_batch);
 
-		//auto pause_menu_item = MenuItemImage::create("", "", CC_CALLBACK_1(FlyScene::pausePressed, this));
-		//pause_menu_item->setNormalSpriteFrame(SpriteFrameCache::getInstance()->getSpriteFrameByName("pause.png"));
-		//pause_menu_item->setPosition(Point(origin.x + visibleSize.width - pause_menu_item->getContentSize().width / 2, origin.y + visibleSize.height - pause_menu_item->getContentSize().height / 2));
-		//auto pauseMenu = Menu::create(pause_menu_item, NULL);
-		//pauseMenu->setPosition(Point::ZERO);
-		//this->addChild(pauseMenu, 1);
 
 		_scoreLabel =  LabelAtlas::create("0", "img_num_dis.png", 22, 28, '0');
 		_scoreLabel->setPosition(Point(origin.x + visibleSize.width / 2 - _scoreLabel->getContentSize().width / 2, origin.y + visibleSize.height - _scoreLabel->getContentSize().height - 5));
 		this->addChild(_scoreLabel);
 
+		this->initPhysics();
+
 		_plane = Plane::create();
+		_plane->setTag(SPRITE_PLANE);
 		_plane->setPosition(Point(origin.x + visibleSize.width / 2, origin.y + visibleSize.height / 2));
 		//_sprite_batch->addChild(_plane, 100);
 		this->addChild(_plane, 100);
+		this->addBoxBodyForSprite(_plane);
 
 		auto listener = EventListenerTouchAllAtOnce::create();
 		listener->onTouchesBegan = CC_CALLBACK_2(FlyScene::onTouchesBegan, this);
@@ -56,9 +73,12 @@ bool FlyScene::init()
 		listener->onTouchesEnded = CC_CALLBACK_2(FlyScene::onTouchesEnded, this); 
 		_eventDispatcher->addEventListenerWithSceneGraphPriority(listener, this);
 
+
+
 		this->schedule(schedule_selector(FlyScene::createBullet));
-		this->schedule(schedule_selector(FlyScene::checkBullet));
-		this->schedule(SEL_SCHEDULE(&FlyScene::saveTime),1);
+		this->schedule(schedule_selector(FlyScene::updateBullet));
+		this->schedule(schedule_selector(FlyScene::updateBoxBody));
+		this->schedule(SEL_SCHEDULE(&FlyScene::updateScore),1);
 
 		isFlying = false;
 		g_gameTime = 0;
@@ -73,6 +93,34 @@ bool FlyScene::init()
 	}while(0);
 
 	return bRet;
+}
+
+void FlyScene::initPhysics()
+{
+	b2Vec2 gravity;
+	gravity.Set(0.0f, 0.0f);
+	_world = new b2World(gravity);
+	_world->SetAllowSleeping(false);
+
+	b2BodyDef groundBodyDef;
+	groundBodyDef.position.Set(0, 0);
+	b2Body *groundBody = _world->CreateBody(&groundBodyDef);
+	b2EdgeShape groundBox;
+	//bottom
+	groundBox.Set(b2Vec2(VisibleRect::leftBottom().x / PTM_RATIO, VisibleRect::leftBottom().y / PTM_RATIO), b2Vec2(VisibleRect::rightBottom().x / PTM_RATIO, VisibleRect::rightBottom().y / PTM_RATIO));
+	groundBody->CreateFixture(&groundBox, 0);
+	//right
+	groundBox.Set(b2Vec2(VisibleRect::rightBottom().x / PTM_RATIO, VisibleRect::rightBottom().y / PTM_RATIO), b2Vec2(VisibleRect::rightTop().x / PTM_RATIO, VisibleRect::rightTop().y / PTM_RATIO));
+	groundBody->CreateFixture(&groundBox, 0);
+	//top
+	groundBox.Set(b2Vec2(VisibleRect::leftTop().x / PTM_RATIO, VisibleRect::leftTop().y / PTM_RATIO), b2Vec2(VisibleRect::rightTop().x / PTM_RATIO, VisibleRect::rightTop().y / PTM_RATIO));
+	groundBody->CreateFixture(&groundBox, 0);
+	//left
+	groundBox.Set(b2Vec2(VisibleRect::leftBottom().x / PTM_RATIO, VisibleRect::leftBottom().y / PTM_RATIO), b2Vec2(VisibleRect::leftTop().x / PTM_RATIO, VisibleRect::leftTop().y / PTM_RATIO));
+	groundBody->CreateFixture(&groundBox, 0);
+
+	_contactListener = new MyContactListener();
+	_world->SetContactListener(_contactListener);
 }
 
 void FlyScene::pausePressed(cocos2d::Object *pSender)
@@ -117,7 +165,7 @@ void FlyScene::onTouchesBegan(const vector<Touch*>& touches, Event *unused_event
 	{
 		isFlying = true;
 	}
-	log("onTouchesBegan");
+	//log("onTouchesBegan");
 }
 
 void FlyScene::onTouchesMoved(const vector<Touch*>& touches, Event *unused_event)
@@ -134,13 +182,13 @@ void FlyScene::onTouchesMoved(const vector<Touch*>& touches, Event *unused_event
 			_plane->setPosition(location);
 		}
 	}
-	log("onTouchesMoved");
+	//log("onTouchesMoved");
 }
 
 void FlyScene::onTouchesEnded(const vector<Touch*>& touches, Event *unused_event)
 {
 	isFlying = false;
-	log("onTouchesEnded");
+	//log("onTouchesEnded");
 }
 
 
@@ -152,95 +200,114 @@ void FlyScene::createBullet( float dt )
 	}
 
 	Bullet* bullet = Bullet::create();
+	bullet->setTag(SPRITE_BULLET);
 	_sprite_batch->addChild(bullet);
 	_bullets->addObject(bullet);
+
+	//log("createBullet bullet=%p", bullet);
+	this->addBoxBodyForSprite(bullet);
 }
 
-void FlyScene::checkBullet(float dt)
+void FlyScene::updateBoxBody(float dt)
 {
-	if (!_plane->isVisible() || _bullets->count() == 0)
+	if (_isGameOver)
 	{
 		return;
 	}
 
+	//调用world对象的step方法，这样它就可以进行物理仿真了。这里的两个参数分别是“速度迭代次数”和“位置迭代次数”--你应该设置他们的范围在8-10之间。
+	//这里的数字越小，精度越小，但是效率更高。数字越大，仿真越精确，但同时耗时更多。8一般是个折中
+	_world->Step(dt, 10, 10);
+
+	std::vector<b2Body *> toDestroy;
 	Size size = Director::getInstance()->getWinSize();
 	Rect screen = Rect(0, 0, size.width, size.height);
-	Rect planeBox = _plane->getBoundingBox();
-	Object *bulletObj = NULL;
-	Array *will_delete_bullets = Array::create();
-	bool isGameOver = false;
 
+	for(b2Body *body = _world->GetBodyList(); body; body = body->GetNext()) {
+		if(body->GetUserData() != NULL) {
+			Sprite *sprite = (Sprite*)body->GetUserData();
+			b2Vec2 b2Pos = b2Vec2(sprite->getPositionX() / PTM_RATIO, sprite->getPositionY() / PTM_RATIO);
+			float b2Angle = -1 * CC_DEGREES_TO_RADIANS(sprite->getRotation());
+			body->SetTransform(b2Pos, b2Angle);
+
+			if (sprite->getTag() == SPRITE_BULLET && !screen.containsPoint(sprite->getPosition())) {
+				toDestroy.push_back(body);
+				_bullets->removeObject(sprite);
+			}
+		 }
+	}
+
+	std::vector<MyContact>::iterator iter;
+	for(iter = _contactListener->_contacts.begin(); iter != _contactListener->_contacts.end(); ++ iter) {
+		MyContact contact = *iter;
+		b2Body *bodyA = contact.fixtureA->GetBody();
+		b2Body *bodyB = contact.fixtureB->GetBody();
+		if(bodyA->GetUserData() != NULL && bodyB->GetUserData() != NULL) {
+			Sprite *spriteA = (Sprite*)bodyA->GetUserData();
+			Sprite *spriteB = (Sprite*)bodyB->GetUserData();
+
+			if(spriteA->getTag() == SPRITE_PLANE && spriteB->getTag() == SPRITE_BULLET) {
+				toDestroy.push_back(bodyA);
+				_isGameOver = true;
+			}else if(spriteB->getTag() == SPRITE_PLANE && spriteA->getTag() == SPRITE_BULLET) {
+				toDestroy.push_back(bodyB);
+				_isGameOver = true;
+			}
+		}
+	}
+	std::vector<b2Body *>::iterator iter2;
+	for(iter2 = toDestroy.begin(); iter2 != toDestroy.end(); ++ iter2) {
+		b2Body *body = *iter2;
+		if(body->GetUserData() != NULL) {
+			Sprite *sprite = (Sprite *)body->GetUserData();
+			//log("sprite=%p", sprite);
+			// just do it temp
+			if(sprite->getTag() == SPRITE_BULLET) {
+				_sprite_batch->removeChild(sprite, true);
+			}
+		}
+		_world->DestroyBody(body);
+	}
+
+	if(toDestroy.size() > 0 && _isGameOver) {
+		g_gameTime = 0;
+		_plane->setVisible(false);
+		_scoreLabel->setVisible(false);
+
+		auto particleSprite = Sprite::create("explosion.png");
+		this->addChild(particleSprite);
+
+		auto particleEmitter = ParticleSystemQuad::create("explosion.plist");
+		particleEmitter->setPosition(_plane->getPosition());
+		auto particleBatch = ParticleBatchNode::createWithTexture(particleEmitter->getTexture());
+		particleBatch->addChild(particleEmitter);
+		this->addChild(particleBatch, 10);
+
+		_sprite_batch->removeAllChildrenWithCleanup(true);
+		_bullets->removeAllObjects();
+		this->runAction(Sequence::create(DelayTime::create(1), CallFunc::create(CC_CALLBACK_0(FlyScene::explosionEndDid, this)),  NULL));
+	}
+}
+
+void FlyScene::updateBullet(float dt)
+{
+	if (_isGameOver)
+	{
+		return;
+	}
+
+	Object *bulletObj = NULL;
 	CCARRAY_FOREACH(_bullets, bulletObj)
 	{
 		Bullet *bullet = (Bullet*)bulletObj;
 		Point position = bullet->getPosition();
-		Rect bulletBox = bullet->getBoundingBox();
 
-		if (planeBox.intersectsRect(bulletBox))
-		{
-/*			will_delete_bullets->addObject(bullet);
-			this->removeChild(bullet, true);
-			_plane->setVisible(false);
-
-			auto textureCache = Director::getInstance()->getTextureCache();
-			auto texture = textureCache->addImage("explosion.png");
-					
-			auto animation = Animation::create();
-			animation->setDelayPerUnit(0.2f);
-			for(int i=0; i<4; ++ i) {
-				animation->addSpriteFrameWithTexture(texture, Rect(i*32, 0, 32, 32));
-			}
-				
-			Animate *animate = Animate::create(animation);
-			FiniteTimeAction *animateOver = CallFunc::create(this, callfunc_selector(FlyScene::explosionEndDid));
-			FiniteTimeAction *seq = Sequence::create(animate, animateOver, NULL);
-
-			_explosion = Sprite::createWithTexture(texture,Rect(0,0,32,32));
-			this->addChild(_explosion);
-			_explosion->setPosition(_plane->getPosition());
-			_explosion->runAction(seq);		*/	
-
-			//if(g_isPlaySoundEffect) {
-				//CocosDenshion::SimpleAudioEngine::sharedEngine()->playEffect("explosion.wav");
-			//}
-			g_gameTime = 0;
-			_scoreLabel->setVisible(false);
-			_plane->setVisible(false);
-
-			auto particleSprite = Sprite::create("explosion.png");
-			this->addChild(particleSprite);
-
-			auto particleEmitter = ParticleSystemQuad::create("explosion.plist");
-			particleEmitter->setPosition(_plane->getPosition());
-			auto particleBatch = ParticleBatchNode::createWithTexture(particleEmitter->getTexture());
-			particleBatch->addChild(particleEmitter);
-			this->addChild(particleBatch, 10);
-
-			isGameOver = true;
-
-			break;
-		}else if (!screen.containsPoint(position)) {
-			_sprite_batch->removeChild(bullet, true);
-			will_delete_bullets->addObject(bullet);
-			break;
-		}
 		Point new_pos = Point(position.x + bullet->get_speed_x(), position.y + bullet->get_speed_y());
 		bullet->setPosition(new_pos);
 	}
-
-	if(will_delete_bullets->count() > 0) {
-		_bullets->removeObjectsInArray(will_delete_bullets);
-	}
-
-	if(isGameOver) {
-		_sprite_batch->removeAllChildren();
-		_bullets->removeAllObjects();
-		this->runAction(Sequence::create(DelayTime::create(1), CallFunc::create(CC_CALLBACK_0(FlyScene::explosionEndDid, this)),  NULL));
-	}
-
 }
 
-void FlyScene::saveTime( float dt )
+void FlyScene::updateScore( float dt )
 {
 	if( _plane->isVisible()) {
 		g_gameTime += dt;
@@ -265,6 +332,51 @@ void FlyScene::explosionEndDid()
 		showAds(true);
 	#endif
 	//Director::getInstance()->replaceScene(TransitionFade::create(1.2f, scene));
+}
+
+void FlyScene::addBoxBodyForSprite(cocos2d::Sprite *sprite)
+{
+	b2BodyDef bodyDef;
+	bodyDef.type = b2_dynamicBody;
+	bodyDef.position.Set(sprite->getPositionX() / PTM_RATIO, sprite->getPositionY() / PTM_RATIO);
+	bodyDef.userData = sprite;
+	b2Body *body = _world->CreateBody(&bodyDef);
+
+	b2PolygonShape spriteShape;
+	if(sprite->getTag() == SPRITE_PLANE) {
+		int num = 8;
+		b2Vec2 verts[] = {
+			b2Vec2(-6.0f / PTM_RATIO, 45.0f / PTM_RATIO),
+			b2Vec2(-42.0f / PTM_RATIO, 4.0f / PTM_RATIO),
+			b2Vec2(-56.0f / PTM_RATIO, -23.0f / PTM_RATIO),
+			b2Vec2(-17.0f / PTM_RATIO, -45.0f / PTM_RATIO),
+			b2Vec2(19.0f / PTM_RATIO, -44.0f / PTM_RATIO),
+			b2Vec2(56.0f / PTM_RATIO, -18.0f / PTM_RATIO),
+			b2Vec2(43.0f / PTM_RATIO, 5.0f / PTM_RATIO),
+			b2Vec2(5.0f / PTM_RATIO,46.0 / PTM_RATIO)
+		};
+		spriteShape.Set(verts, num);
+	}else if(sprite->getTag() == SPRITE_BULLET) {
+		int num = 8;
+		b2Vec2 verts[] = {
+			b2Vec2(-0.3f / PTM_RATIO, 7.0f / PTM_RATIO),
+			b2Vec2(-6.3f / PTM_RATIO, 5.4f / PTM_RATIO),
+			b2Vec2(-7.9f / PTM_RATIO, -0.2f / PTM_RATIO),
+			b2Vec2(-5.6f / PTM_RATIO, -4.8f / PTM_RATIO),
+			b2Vec2(-0.8f / PTM_RATIO, -6.5f / PTM_RATIO),
+			b2Vec2(5.8f / PTM_RATIO, -4.8f / PTM_RATIO),
+			b2Vec2(7.3f / PTM_RATIO, 0.8f / PTM_RATIO),
+			b2Vec2(5.2f / PTM_RATIO, 5.6 / PTM_RATIO)
+		};
+		spriteShape.Set(verts, num);
+	}
+
+	b2FixtureDef fixtureDef;
+	fixtureDef.shape = &spriteShape;
+	fixtureDef.density = 10.0f;
+	fixtureDef.isSensor = true;
+
+	body->CreateFixture(&fixtureDef);
 }
 
 GameOverLayer::GameOverLayer()
@@ -305,7 +417,11 @@ bool GameOverLayer::init()
 		this->addChild(scorePanel);
 
 
-		auto startBtnItem = MenuItemImage::create("btn_yellow.png", "btn_yellow_pressed.png", CC_CALLBACK_1(GameOverLayer::menuNewCallback, this));
+		//C++11之lambda表达式
+		auto startBtnItem = MenuItemImage::create("btn_yellow.png", "btn_yellow_pressed.png", [](Object *sender) {
+				Scene *scene = FlyScene::scene();
+				Director::getInstance()->replaceScene(scene);
+		});
 		startBtnItem->setPosition(Point(origin.x + visibleSize.width / 2, origin.y + startBtnItem->getContentSize().height / 2 + 150));
 		auto startMenu = Menu::create(startBtnItem, NULL);
 		startMenu->setPosition(Point::ZERO);
@@ -323,6 +439,5 @@ bool GameOverLayer::init()
 
 void GameOverLayer::menuNewCallback(Object* pSender)
 {
-	Scene *scene = FlyScene::scene();
-	Director::getInstance()->replaceScene(scene);
+
 }

@@ -48,7 +48,10 @@ bool WelcomeLayer::init()
 	planeSprite->setPosition(Point(origin.x + visibleSize.width / 2, origin.y + titleSprite->getPositionY() - titleSprite->getContentSize().height - planeSprite->getContentSize().height / 2 - 100));
 	this->addChild(planeSprite);
 
-	auto startBtnItem = MenuItemImage::create("btn_yellow.png", "btn_yellow_pressed.png", CC_CALLBACK_1(WelcomeLayer::menuNewCallback, this));
+	auto startBtnItem = MenuItemImage::create("btn_yellow.png", "btn_yellow_pressed.png", [](Object *sender) {
+				Scene *scene = FlyScene::scene();
+				Director::getInstance()->replaceScene(CCTransitionCrossFade::create(1.2f,scene));
+		});
 
 	startBtnItem->setPosition(Point(origin.x + visibleSize.width / 2, origin.y + startBtnItem->getContentSize().height / 2 + 100));
 	auto startMenu = Menu::create(startBtnItem, NULL);
@@ -112,8 +115,7 @@ void WelcomeLayer::menuCloseCallback(Object* pSender)
 
 void WelcomeLayer::menuNewCallback(Object* pSender)
 {
-	Scene *scene = FlyScene::scene();
-	Director::getInstance()->replaceScene(CCTransitionCrossFade::create(1.2f,scene));
+
 }
 
 

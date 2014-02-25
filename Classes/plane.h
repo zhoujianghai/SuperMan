@@ -3,6 +3,7 @@
 
 #include <cocos2d.h>
 
+
 class Plane : public cocos2d::Sprite
 {
 public:
