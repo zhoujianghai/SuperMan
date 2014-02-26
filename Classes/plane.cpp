@@ -18,8 +18,10 @@ bool Plane::init()
 	bool ret = false;
 	do {
 
-		//CC_BREAK_IF(!this->initWithSpriteFrameName("plane.png"));
-		CC_BREAK_IF(!this->initWithFile("plane_small.png"));
+		CC_BREAK_IF(!this->initWithSpriteFrameName("hero_01.png"));
+
+		auto self_anim = createAnimation("hero_%02d.png", 7, 10);
+		this->runAction(RepeatForever::create(Animate::create(self_anim)));
 		ret = true;
 	}while(0);
 

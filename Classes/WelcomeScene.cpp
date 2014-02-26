@@ -2,6 +2,7 @@
 #include "FlyScene.h"
 #include "SettingScene.h"
 #include "tools.h"
+#include "plane.h"
 
 USING_NS_CC;
 
@@ -44,22 +45,25 @@ bool WelcomeLayer::init()
 	titleSprite->setPosition(Point(origin.x + visibleSize.width / 2, origin.y + visibleSize.height - titleSprite->getContentSize().height / 2 - 160));
 	this->addChild(titleSprite);
 
-	auto planeSprite = Sprite::create("plane_small.png");
+	SpriteFrameCache::getInstance()->addSpriteFramesWithFile("resources.plist");
+
+	auto planeSprite = Plane::create();
 	planeSprite->setScale(2.0f);
 	planeSprite->setPosition(Point(origin.x + visibleSize.width / 2, origin.y + titleSprite->getPositionY() - titleSprite->getContentSize().height - planeSprite->getContentSize().height / 2 - 100));
 	this->addChild(planeSprite);
 
-	auto startBtnItem = MenuItemImage::create("btn_yellow.png", "btn_yellow_pressed.png", [](Object *sender) {
+	auto startBtnItem = MenuItemImage::create("", "", [](Object *sender) {
 				Scene *scene = FlyScene::scene();
 				Director::getInstance()->replaceScene(CCTransitionCrossFade::create(1.2f,scene));
 		});
-
+	auto btnSprite = Sprite::createWithSpriteFrameName("btn_yellow.png");
+	startBtnItem->setNormalSpriteFrame(btnSprite->getDisplayFrame());
 	startBtnItem->setPosition(Point(origin.x + visibleSize.width / 2, origin.y + startBtnItem->getContentSize().height / 2 + 100));
 	auto startMenu = Menu::create(startBtnItem, NULL);
 	startMenu->setPosition(Point::ZERO);
 	this->addChild(startMenu);
 
-	auto startBtnText = Sprite::create("start_game_text.png");
+	auto startBtnText = Sprite::createWithSpriteFrameName("start_game_text.png");
 	startBtnText->setPosition(startBtnItem->getPosition());
 	this->addChild(startBtnText);
 
@@ -83,14 +87,12 @@ bool WelcomeLayer::init()
 	particleBatch->addChild(particleEmitter);
 	this->addChild(particleBatch, 5);
 
+	//auto sunParticle = ParticleSun::createWithTotalParticles(20);
+ //   sunParticle->setTexture( Director::getInstance()->getTextureCache()->addImage("fire.png") );
+	//sunParticle->setPosition(Point(planeSprite->getPositionX(), planeSprite->getPositionY() - planeSprite->getContentSize().height / 2 - 30));
+	//this->addChild(sunParticle, 10);
 
-
-	auto sunParticle = ParticleSun::createWithTotalParticles(20);
-    sunParticle->setTexture( Director::getInstance()->getTextureCache()->addImage("fire.png") );
-	sunParticle->setPosition(Point(planeSprite->getPositionX(), planeSprite->getPositionY() - planeSprite->getContentSize().height / 2 - 30));
-	this->addChild(sunParticle, 10);
-
-	auto starSprite = Sprite::create("snow.png");
+	auto starSprite = Sprite::create("star.png");
 	starSprite->setScale(0.4f);
 	starSprite->setPosition(Point(startBtnItem->getPosition().x - startBtnItem->getContentSize().width / 2, startBtnItem->getPosition().y - startBtnItem->getContentSize().height / 2));	
 	this->addChild(starSprite, 10);
@@ -104,7 +106,7 @@ bool WelcomeLayer::init()
 	starSprite->runAction(path);
 	_emitter->runAction(path->clone());
 
-	auto starSprite2 = Sprite::create("snow.png");
+	auto starSprite2 = Sprite::create("star.png");
 	starSprite2->setScale(0.4f);
 	starSprite2->setPosition(Point(startBtnItem->getPosition().x + startBtnItem->getContentSize().width / 2, startBtnItem->getPosition().y + startBtnItem->getContentSize().height / 2));	
 	this->addChild(starSprite2, 10);
@@ -145,7 +147,7 @@ ParticleSystem* WelcomeLayer::particleInit(){
 	auto _emitter = new ParticleSystemQuad();
 	_emitter->initWithTotalParticles(100);
 	addChild(_emitter, 10);
-	_emitter->setTexture(Director::getInstance()->getTextureCache()->addImage("point.png"));
+	_emitter->setTexture(Director::getInstance()->getTextureCache()->addImage("star.png"));
 	_emitter->setAnchorPoint(Point(0, 0));
 	// duration
 	_emitter->setDuration(ParticleSystem::DURATION_INFINITY);

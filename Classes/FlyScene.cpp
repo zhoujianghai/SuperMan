@@ -50,13 +50,11 @@ bool FlyScene::init()
 		background->setPosition(Point(visibleSize.width/2 + origin.x, visibleSize.height/2 + origin.y));
 		this->addChild(background, -1);
 
-
-		SpriteFrameCache::getInstance()->addSpriteFramesWithFile("commons.plist");
-		_sprite_batch = SpriteBatchNode::create("commons.png");
+		SpriteFrameCache::getInstance()->addSpriteFramesWithFile("resources.plist");
+		_sprite_batch = SpriteBatchNode::create("resources.png");
 		this->addChild(_sprite_batch);
 
-
-		_scoreLabel =  LabelAtlas::create("0", "img_num_dis.png", 22, 28, '0');
+		_scoreLabel =  LabelAtlas::create("0", "number_small.png", 22, 28, '0');
 		_scoreLabel->setPosition(Point(origin.x + visibleSize.width / 2 - _scoreLabel->getContentSize().width / 2, origin.y + visibleSize.height - _scoreLabel->getContentSize().height - 5));
 		this->addChild(_scoreLabel);
 
@@ -64,6 +62,7 @@ bool FlyScene::init()
 
 		_plane = Plane::create();
 		_plane->setTag(SPRITE_PLANE);
+		_plane->setScale(2.0f);
 		_plane->setPosition(Point(origin.x + visibleSize.width / 2, origin.y + visibleSize.height / 2));
 		//_sprite_batch->addChild(_plane, 100);
 		this->addChild(_plane, 100);
@@ -88,8 +87,8 @@ bool FlyScene::init()
 		_bullets = Array::create();
 		_bullets->retain();
 
-		m_pJoystick = Sprite::create("joystick.png");
-		m_pJoystickBg = Sprite::create("joystick_bg.png");
+		m_pJoystick = Sprite::createWithSpriteFrameName("joystick.png");
+		m_pJoystickBg = Sprite::createWithSpriteFrameName("joystick_bg.png");
 		this->addChild(m_pJoystickBg, 0);
 		this->addChild(m_pJoystick, 1);
 
@@ -226,9 +225,7 @@ void FlyScene::createBullet( float dt )
 	}
 
 	Bullet* bullet = Bullet::create();
-	float scale = ((rand() % 10) + 6) / 10.0f;
-	if(scale < 0.6f) scale = 0.6f;
-	bullet->setScale(scale);
+	bullet->setScale(0.5f);
 	bullet->setTag(SPRITE_BULLET);
 	_sprite_batch->addChild(bullet);
 	_bullets->addObject(bullet);
@@ -416,41 +413,34 @@ void FlyScene::addBoxBodyForSprite(cocos2d::Sprite *sprite)
 	bodyDef.userData = sprite;
 	b2Body *body = _world->CreateBody(&bodyDef);
 
-	b2PolygonShape spriteShape;
 	if(sprite->getTag() == SPRITE_PLANE) {
-		int num = 8;
+		int num = 5;
 		b2Vec2 verts[] = {
-			b2Vec2(-6.0f / PTM_RATIO, 45.0f / PTM_RATIO),
-			b2Vec2(-42.0f / PTM_RATIO, 4.0f / PTM_RATIO),
-			b2Vec2(-56.0f / PTM_RATIO, -23.0f / PTM_RATIO),
-			b2Vec2(-17.0f / PTM_RATIO, -45.0f / PTM_RATIO),
-			b2Vec2(19.0f / PTM_RATIO, -44.0f / PTM_RATIO),
-			b2Vec2(56.0f / PTM_RATIO, -18.0f / PTM_RATIO),
-			b2Vec2(43.0f / PTM_RATIO, 5.0f / PTM_RATIO),
-			b2Vec2(5.0f / PTM_RATIO,46.0 / PTM_RATIO)
+			b2Vec2(-10.9f / PTM_RATIO, 24.3f / PTM_RATIO),
+			b2Vec2(-25.6f / PTM_RATIO, 0.0f / PTM_RATIO),
+			b2Vec2(-1.6f / PTM_RATIO, -24.0f / PTM_RATIO),
+			b2Vec2(26.4f / PTM_RATIO, 2.4f / PTM_RATIO),
+			b2Vec2(10.4f / PTM_RATIO, 24.8f / PTM_RATIO)
 		};
+		b2FixtureDef fixtureDef;
+		b2PolygonShape spriteShape;
 		spriteShape.Set(verts, num);
+		fixtureDef.shape = &spriteShape;
+		fixtureDef.density = 10.0f;
+		fixtureDef.isSensor = true;
+		body->CreateFixture(&fixtureDef);
+
 	}else if(sprite->getTag() == SPRITE_BULLET) {
-		int num = 8;
-		b2Vec2 verts[] = {
-			b2Vec2(-0.3f / PTM_RATIO, 7.0f / PTM_RATIO),
-			b2Vec2(-6.3f / PTM_RATIO, 5.4f / PTM_RATIO),
-			b2Vec2(-7.9f / PTM_RATIO, -0.2f / PTM_RATIO),
-			b2Vec2(-5.6f / PTM_RATIO, -4.8f / PTM_RATIO),
-			b2Vec2(-0.8f / PTM_RATIO, -6.5f / PTM_RATIO),
-			b2Vec2(5.8f / PTM_RATIO, -4.8f / PTM_RATIO),
-			b2Vec2(7.3f / PTM_RATIO, 0.8f / PTM_RATIO),
-			b2Vec2(5.2f / PTM_RATIO, 5.6 / PTM_RATIO)
-		};
-		spriteShape.Set(verts, num);
+		b2FixtureDef fixtureDef;
+		b2CircleShape spriteShape;
+		spriteShape.m_radius = 40.0f / PTM_RATIO;
+		fixtureDef.shape = &spriteShape;
+		fixtureDef.density = 10.0f;
+		fixtureDef.isSensor = true;
+		body->CreateFixture(&fixtureDef);
 	}
 
-	b2FixtureDef fixtureDef;
-	fixtureDef.shape = &spriteShape;
-	fixtureDef.density = 10.0f;
-	fixtureDef.isSensor = true;
 
-	body->CreateFixture(&fixtureDef);
 }
 
 GameOverLayer::GameOverLayer()
@@ -471,19 +461,19 @@ bool GameOverLayer::init()
 		Size visibleSize = Director::getInstance()->getVisibleSize();
 		Point origin = Director::getInstance()->getVisibleOrigin();
 		
-		auto title = Sprite::create("gameover.png");
+		auto title = Sprite::createWithSpriteFrameName("gameover.png");
 		title->setPosition(Point(origin.x + visibleSize.width / 2, origin.y + visibleSize.height - title->getContentSize().height / 2 - 200));
 		this->addChild(title);
 
-		auto scorePanel = Sprite::create("base.png");
+		auto scorePanel = Sprite::create("score_panel.png");
 		scorePanel->setPosition(Point(origin.x + visibleSize.width / 2, title->getPositionY() - title->getContentSize().height / 2 - scorePanel->getContentSize().height / 2 - 50));
 
-		auto oldScoreLabel =  LabelAtlas::create("0", "number2.png", 54, 79, '0');
+		auto oldScoreLabel =  LabelAtlas::create("0", "number_large.png", 54, 79, '0');
 		oldScoreLabel->setPosition(Point(scorePanel->getContentSize().width - 140, 30));
 		scorePanel->addChild(oldScoreLabel);
 		//oldScoreLabel->setScale(0.9f);
 		
-		auto newScoreLabel =  LabelAtlas::create("2", "number2.png", 54, 79, '0');
+		auto newScoreLabel =  LabelAtlas::create("2", "number_large.png", 54, 79, '0');
 		newScoreLabel->setPosition(Point(scorePanel->getContentSize().width - 140, 142));
 		scorePanel->addChild(newScoreLabel);
 		//newScoreLabel->setScale(0.9f);
@@ -492,16 +482,19 @@ bool GameOverLayer::init()
 
 
 		//C++11之lambda表达式
-		auto startBtnItem = MenuItemImage::create("btn_yellow.png", "btn_yellow_pressed.png", [](Object *sender) {
+		auto startBtnItem = MenuItemImage::create("", "", [](Object *sender) {
 				Scene *scene = FlyScene::scene();
 				Director::getInstance()->replaceScene(scene);
 		});
+
+		auto btnSprite = Sprite::createWithSpriteFrameName("btn_yellow.png");
+		startBtnItem->setNormalSpriteFrame(btnSprite->getDisplayFrame());
 		startBtnItem->setPosition(Point(origin.x + visibleSize.width / 2, origin.y + startBtnItem->getContentSize().height / 2 + 150));
 		auto startMenu = Menu::create(startBtnItem, NULL);
 		startMenu->setPosition(Point::ZERO);
 		this->addChild(startMenu);
 
-		auto startBtnText = Sprite::create("start_game_text.png");
+		auto startBtnText = Sprite::createWithSpriteFrameName("start_game_text.png");
 		startBtnText->setPosition(startBtnItem->getPosition());
 		this->addChild(startBtnText);
 
