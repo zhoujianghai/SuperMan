@@ -572,51 +572,9 @@ bool GameOverLayer::init()
 		startMenu->setPosition(Point::ZERO);
 		this->addChild(startMenu);
 
-		auto startBtnText = Sprite::createWithSpriteFrameName("start_game_text.png");
+		auto startBtnText = Sprite::createWithSpriteFrameName("again_game_text.png");
 		startBtnText->setPosition(startBtnItem->getPosition());
 		this->addChild(startBtnText);
-
-
-		//CC_BREAK_IF( !this->initWithColor(Color4B(105, 105, 105, 128)) );
-		//Size visibleSize = Director::getInstance()->getVisibleSize();
-		//Point origin = Director::getInstance()->getVisibleOrigin();
-		//
-		//auto title = Sprite::createWithSpriteFrameName("gameover.png");
-		//title->setPosition(Point(origin.x + visibleSize.width / 2, origin.y + visibleSize.height - title->getContentSize().height / 2 - 200));
-		//this->addChild(title);
-
-		//auto scorePanel = Sprite::create("score_panel.png");
-		//scorePanel->setPosition(Point(origin.x + visibleSize.width / 2, title->getPositionY() - title->getContentSize().height / 2 - scorePanel->getContentSize().height / 2 - 50));
-
-		//auto oldScoreLabel =  LabelAtlas::create("0", "number_large.png", 54, 79, '0');
-		//oldScoreLabel->setPosition(Point(scorePanel->getContentSize().width - 140, 30));
-		//scorePanel->addChild(oldScoreLabel);
-		////oldScoreLabel->setScale(0.9f);
-		//
-		//auto newScoreLabel =  LabelAtlas::create("2", "number_large.png", 54, 79, '0');
-		//newScoreLabel->setPosition(Point(scorePanel->getContentSize().width - 140, 142));
-		//scorePanel->addChild(newScoreLabel);
-		////newScoreLabel->setScale(0.9f);
-
-		//this->addChild(scorePanel);
-
-
-		////C++11之lambda表达式
-		//auto startBtnItem = MenuItemImage::create("", "", [](Object *sender) {
-		//		Scene *scene = FlyScene::scene();
-		//		Director::getInstance()->replaceScene(scene);
-		//});
-
-		//auto btnSprite = Sprite::createWithSpriteFrameName("btn_yellow.png");
-		//startBtnItem->setNormalSpriteFrame(btnSprite->getDisplayFrame());
-		//startBtnItem->setPosition(Point(origin.x + visibleSize.width / 2, origin.y + startBtnItem->getContentSize().height / 2 + 150));
-		//auto startMenu = Menu::create(startBtnItem, NULL);
-		//startMenu->setPosition(Point::ZERO);
-		//this->addChild(startMenu);
-
-		//auto startBtnText = Sprite::createWithSpriteFrameName("start_game_text.png");
-		//startBtnText->setPosition(startBtnItem->getPosition());
-		//this->addChild(startBtnText);
 
 		ret = true;
 	}while(0);
