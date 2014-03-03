@@ -7,6 +7,10 @@
 #include "plane.h"
 #include "VisibleRect.h"
 #include "MyContactListener.h"
+#include "XmlParser.h"
+
+#include "cocos-ext.h"
+USING_NS_CC_EXT;
 
 
 using namespace cocos2d;
@@ -17,6 +21,34 @@ using namespace std;
 #if (CC_TARGET_PLATFORM == CC_PLATFORM_ANDROID)
 extern void showAds(bool show);
 #endif
+
+string getLevel(int score) {
+	string ret = "";
+	if(score < 20) {
+		ret = "xiaobing";
+	}else if(score < 30) {
+		ret = "banzhang";
+	}else if(score < 40) {
+		ret = "paizhang";
+	}else if(score < 50) {
+		ret = "lianzhang";
+	}
+	else if(score < 60) {
+		ret = "yingzhang";
+	}else if(score < 70) {
+		ret = "tuanzhang";
+	}else if(score < 80) {
+		ret = "lvzhang";
+	}else if(score < 90) {
+		ret = "shizhang";
+	}else if(score < 100) {
+		ret = "junzhang";
+	}else if(score >= 120) {
+		ret = "siling";
+	}
+
+	return ret;
+}
 
 FlyScene::FlyScene()
 	:_world(NULL),
@@ -285,8 +317,8 @@ void FlyScene::updateBoxBody(float dt)
 		return;
 	}
 
-	//µ÷ÓÃworld¶ÔÏóµÄstep·½·¨£¬ÕâÑùËü¾Í¿ÉÒÔ½øÐÐÎïÀí·ÂÕæÁË¡£ÕâÀïµÄÁ½¸ö²ÎÊý·Ö±ðÊÇ¡°ËÙ¶Èµü´ú´ÎÊý¡±ºÍ¡°Î»ÖÃµü´ú´ÎÊý¡±--ÄãÓ¦¸ÃÉèÖÃËûÃÇµÄ·¶Î§ÔÚ8-10Ö®¼ä¡£
-	//ÕâÀïµÄÊý×ÖÔ½Ð¡£¬¾«¶ÈÔ½Ð¡£¬µ«ÊÇÐ§ÂÊ¸ü¸ß¡£Êý×ÖÔ½´ó£¬·ÂÕæÔ½¾«È·£¬µ«Í¬Ê±ºÄÊ±¸ü¶à¡£8Ò»°ãÊÇ¸öÕÛÖÐ
+	//è°ƒç”¨worldå¯¹è±¡çš„stepæ–¹æ³•ï¼Œè¿™æ ·å®ƒå°±å¯ä»¥è¿›è¡Œç‰©ç†ä»¿çœŸäº†ã€‚è¿™é‡Œçš„ä¸¤ä¸ªå‚æ•°åˆ†åˆ«æ˜¯â€œé€Ÿåº¦è¿­ä»£æ¬¡æ•°â€å’Œâ€œä½ç½®è¿­ä»£æ¬¡æ•°â€--ä½ åº”è¯¥è®¾ç½®ä»–ä»¬çš„èŒƒå›´åœ¨8-10ä¹‹é—´ã€‚
+	//è¿™é‡Œçš„æ•°å­—è¶Šå°ï¼Œç²¾åº¦è¶Šå°ï¼Œä½†æ˜¯æ•ˆçŽ‡æ›´é«˜ã€‚æ•°å­—è¶Šå¤§ï¼Œä»¿çœŸè¶Šç²¾ç¡®ï¼Œä½†åŒæ—¶è€—æ—¶æ›´å¤šã€‚8ä¸€èˆ¬æ˜¯ä¸ªæŠ˜ä¸­
 	_world->Step(dt, 10, 10);
 
 	std::vector<b2Body *> toDestroy;
@@ -340,7 +372,6 @@ void FlyScene::updateBoxBody(float dt)
 	}
 
 	if(toDestroy.size() > 0 && _isGameOver) {
-		g_gameTime = 0;
 		_plane->setVisible(false);
 		_scoreLabel->setVisible(false);
 
@@ -461,27 +492,74 @@ bool GameOverLayer::init()
 		Size visibleSize = Director::getInstance()->getVisibleSize();
 		Point origin = Director::getInstance()->getVisibleOrigin();
 		
-		auto title = Sprite::createWithSpriteFrameName("gameover.png");
-		title->setPosition(Point(origin.x + visibleSize.width / 2, origin.y + visibleSize.height - title->getContentSize().height / 2 - 200));
+		auto title = Sprite::create("girl.png");
+		title->setPosition(Point(origin.x + visibleSize.width / 2, origin.y + visibleSize.height - title->getContentSize().height / 2 - 100));
 		this->addChild(title);
 
-		auto scorePanel = Sprite::create("score_panel.png");
-		scorePanel->setPosition(Point(origin.x + visibleSize.width / 2, title->getPositionY() - title->getContentSize().height / 2 - scorePanel->getContentSize().height / 2 - 50));
+		auto scorePanel = Scale9Sprite::create("content_bg.png");
+		scorePanel->setPreferredSize(Size(500, 250));
+		scorePanel->setPosition(Point(origin.x + visibleSize.width / 2, title->getPositionY() - title->getContentSize().height / 2 - scorePanel->getContentSize().height / 2 - 80));
 
-		auto oldScoreLabel =  LabelAtlas::create("0", "number_large.png", 54, 79, '0');
-		oldScoreLabel->setPosition(Point(scorePanel->getContentSize().width - 140, 30));
-		scorePanel->addChild(oldScoreLabel);
-		//oldScoreLabel->setScale(0.9f);
-		
-		auto newScoreLabel =  LabelAtlas::create("2", "number_large.png", 54, 79, '0');
-		newScoreLabel->setPosition(Point(scorePanel->getContentSize().width - 140, 142));
-		scorePanel->addChild(newScoreLabel);
+		auto purpleBase = Sprite::create("purple_base.png");
+		purpleBase->setScaleY(1.2f);
+		purpleBase->setScaleX(1.3f);
+		purpleBase->setPosition(Point(origin.x + purpleBase->getContentSize().width / 2, scorePanel->getPositionY() + scorePanel->getContentSize().height / 2 + 60));
+	
+		char tmp2[4];
+		sprintf(tmp2, "%d", g_gameTime);
+		string scoreStr(tmp2);
+		auto newScoreLabel =  LabelAtlas::create(scoreStr.c_str(), "number_large.png", 64, 90, '0');
+		newScoreLabel->setScale(0.8f);
+		newScoreLabel->setPosition(Point(purpleBase->getContentSize().width / 2 - newScoreLabel->getContentSize().width / 2 + 20, purpleBase->getContentSize().height / 2 - newScoreLabel->getContentSize().height / 2 + 30));
+		purpleBase->addChild(newScoreLabel);
 		//newScoreLabel->setScale(0.9f);
 
+		auto newRecordText = Sprite::createWithSpriteFrameName("record_breaking.png");
+		newRecordText->setPosition(Point(purpleBase->getContentSize().width / 2, purpleBase->getContentSize().height - newRecordText->getContentSize().height / 2));
+		purpleBase->addChild(newRecordText);
+
+		auto levelText = Sprite::create("level.png");
+		levelText->setPosition(Point(levelText->getContentSize().width / 2 + 140, scorePanel->getContentSize().height - levelText->getContentSize().height - 30));
+		levelText->setScale(1.5f);
+		scorePanel->addChild(levelText);
+
+		auto userDefault = UserDefault::getInstance();
+		int oldScore = userDefault->getIntegerForKey("score");
+		if(g_gameTime <= oldScore) {
+			newRecordText->setVisible(false);
+		}
+		int maxScore = g_gameTime > oldScore ? g_gameTime : oldScore;
+		userDefault->setIntegerForKey("score", maxScore);
+
+		XMLParser *pXmlParser = XMLParser::parseWithFile("level.xml");
+		string level = ::getLevel(maxScore);
+		CCString *pValue1 = pXmlParser->getString(level.c_str());
+		auto levelDescText = LabelTTF::create(pValue1->getCString(), "Arial", 40);
+		levelDescText->setColor(Color3B(220, 145, 39));
+		levelDescText->setPosition(Point(levelText->getPositionX() + levelText->getContentSize().width + 60, levelText->getPositionY()));
+		scorePanel->addChild(levelDescText);
+
+		auto maxText = Sprite::create("max.png");
+		maxText->setScale(1.5f);
+		maxText->setPosition(Point(levelText->getPositionX(), levelText->getPositionY() - levelText->getContentSize().height - 50));
+		scorePanel->addChild(maxText);
+
+
+
+		char tmp[4];
+		sprintf(tmp, "%d", maxScore);
+		string maxScoreStr(tmp);
+
+		auto maxScoreLabel =  LabelAtlas::create(maxScoreStr.c_str(), "number_large.png", 64, 90, '0');
+		maxScoreLabel->setPosition(Point(levelDescText->getPositionX() - 30, maxText->getPositionY() - maxText->getContentSize().height / 2 - 10));
+		maxScoreLabel->setScale(0.6f);
+		scorePanel->addChild(maxScoreLabel);
+
 		this->addChild(scorePanel);
+		this->addChild(purpleBase);
 
 
-		//C++11Ö®lambda±í´ïÊ½
+		//C++11ä¹‹lambdaè¡¨è¾¾å¼
 		auto startBtnItem = MenuItemImage::create("", "", [](Object *sender) {
 				Scene *scene = FlyScene::scene();
 				Director::getInstance()->replaceScene(scene);
@@ -497,6 +575,48 @@ bool GameOverLayer::init()
 		auto startBtnText = Sprite::createWithSpriteFrameName("start_game_text.png");
 		startBtnText->setPosition(startBtnItem->getPosition());
 		this->addChild(startBtnText);
+
+
+		//CC_BREAK_IF( !this->initWithColor(Color4B(105, 105, 105, 128)) );
+		//Size visibleSize = Director::getInstance()->getVisibleSize();
+		//Point origin = Director::getInstance()->getVisibleOrigin();
+		//
+		//auto title = Sprite::createWithSpriteFrameName("gameover.png");
+		//title->setPosition(Point(origin.x + visibleSize.width / 2, origin.y + visibleSize.height - title->getContentSize().height / 2 - 200));
+		//this->addChild(title);
+
+		//auto scorePanel = Sprite::create("score_panel.png");
+		//scorePanel->setPosition(Point(origin.x + visibleSize.width / 2, title->getPositionY() - title->getContentSize().height / 2 - scorePanel->getContentSize().height / 2 - 50));
+
+		//auto oldScoreLabel =  LabelAtlas::create("0", "number_large.png", 54, 79, '0');
+		//oldScoreLabel->setPosition(Point(scorePanel->getContentSize().width - 140, 30));
+		//scorePanel->addChild(oldScoreLabel);
+		////oldScoreLabel->setScale(0.9f);
+		//
+		//auto newScoreLabel =  LabelAtlas::create("2", "number_large.png", 54, 79, '0');
+		//newScoreLabel->setPosition(Point(scorePanel->getContentSize().width - 140, 142));
+		//scorePanel->addChild(newScoreLabel);
+		////newScoreLabel->setScale(0.9f);
+
+		//this->addChild(scorePanel);
+
+
+		////C++11ä¹‹lambdaè¡¨è¾¾å¼
+		//auto startBtnItem = MenuItemImage::create("", "", [](Object *sender) {
+		//		Scene *scene = FlyScene::scene();
+		//		Director::getInstance()->replaceScene(scene);
+		//});
+
+		//auto btnSprite = Sprite::createWithSpriteFrameName("btn_yellow.png");
+		//startBtnItem->setNormalSpriteFrame(btnSprite->getDisplayFrame());
+		//startBtnItem->setPosition(Point(origin.x + visibleSize.width / 2, origin.y + startBtnItem->getContentSize().height / 2 + 150));
+		//auto startMenu = Menu::create(startBtnItem, NULL);
+		//startMenu->setPosition(Point::ZERO);
+		//this->addChild(startMenu);
+
+		//auto startBtnText = Sprite::createWithSpriteFrameName("start_game_text.png");
+		//startBtnText->setPosition(startBtnItem->getPosition());
+		//this->addChild(startBtnText);
 
 		ret = true;
 	}while(0);

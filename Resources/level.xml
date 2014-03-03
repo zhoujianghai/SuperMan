@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="xiaobing">小兵</string>
+    <string name="banzhang">班长</string>
+<string name="paizhang">排长</string>
+<string name="lianzhang">连长</string>
+<string name="yingzhang">营长</string>
+<string name="tuanzhang">团长</string>
+<string name="lvzhang">旅长</string>
+<string name="shizhang">师长</string>
+<string name="junzhang">军长</string>
+<string name="siling">司令</string>
+</resources>
