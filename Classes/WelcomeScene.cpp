@@ -1,7 +1,5 @@
 #include "WelcomeScene.h"
-#include "FlyScene.h"
-#include "SettingScene.h"
-#include "tools.h"
+#include "GameScene.h"
 #include "plane.h"
 
 USING_NS_CC;
@@ -53,7 +51,7 @@ bool WelcomeLayer::init()
 	this->addChild(planeSprite);
 
 	auto startBtnItem = MenuItemImage::create("", "", [](Object *sender) {
-				Scene *scene = FlyScene::scene();
+				Scene *scene = GameScene::scene();
 				Director::getInstance()->replaceScene(CCTransitionCrossFade::create(1.2f,scene));
 		});
 	auto btnSprite = Sprite::createWithSpriteFrameName("btn_yellow.png");
