@@ -6,7 +6,12 @@
 #include "MyContactListener.h"
 #include "XmlParser.h"
 
+#if (CC_TARGET_PLATFORM == CC_PLATFORM_ANDROID)
+#include "extensions/cocos-ext.h"
+#else
 #include "cocos-ext.h"
+#endif
+
 USING_NS_CC_EXT;
 
 
