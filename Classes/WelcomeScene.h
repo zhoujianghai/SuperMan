@@ -14,19 +14,13 @@ class WelcomeLayer : public cocos2d::Layer
 public:
     static cocos2d::Scene* createScene();
 
-    // Here's a difference. Method 'init' in cocos2d-x returns bool, instead of returning 'id' in cocos2d-iphone
     virtual bool init();  
-    
-    // a selector callback
-    void menuCloseCallback(Object* pSender);
 
-	void menuNewCallback(Object* pSender);
-
-    // implement the "static create()" method manually
     CREATE_FUNC(WelcomeLayer);
 
-	cocos2d::RepeatForever* MyPathFun(float controlX, float controlY, float w, bool isClockwise);
-	cocos2d::ParticleSystem* particleInit();
+	cocos2d::RepeatForever* buildParticleMovePath(float controlX, float controlY, float w, bool isClockwise);
+
+	cocos2d::ParticleSystem* initParticle();
 
 };
 

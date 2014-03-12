@@ -109,8 +109,8 @@ bool GameScene::init()
 		_plane->setTag(SPRITE_PLANE);
 		_plane->setScale(2.0f);
 		_plane->setPosition(Point(origin.x + visibleSize.width / 2, origin.y + visibleSize.height / 2));
-		//_sprite_batch->addChild(_plane, 100);
-		this->addChild(_plane, 100);
+		_sprite_batch->addChild(_plane, 100);
+		//this->addChild(_plane, 100);
 		this->addBoxBodyForSprite(_plane);
 
 		auto listener = EventListenerTouchAllAtOnce::create();
@@ -118,8 +118,6 @@ bool GameScene::init()
 		listener->onTouchesMoved = CC_CALLBACK_2(GameScene::onTouchesMoved, this);
 		listener->onTouchesEnded = CC_CALLBACK_2(GameScene::onTouchesEnded, this); 
 		_eventDispatcher->addEventListenerWithSceneGraphPriority(listener, this);
-
-
 
 		this->schedule(schedule_selector(GameScene::createBullet));
 		this->schedule(schedule_selector(GameScene::updateBullet));
@@ -177,12 +175,6 @@ void GameScene::initPhysics()
 	_world->SetContactListener(_contactListener);
 }
 
-void GameScene::pausePressed(cocos2d::Object *pSender)
-{
-	auto scene = WelcomeScene::createScene();
-	Director::sharedDirector()->replaceScene(TransitionFlipX::create(1.2f, scene));
-}
-
 Scene* GameScene::scene()
 {
 	Scene * scene = NULL;
@@ -204,10 +196,6 @@ Scene* GameScene::scene()
 	return scene;
 }
 
-void GameScene::menuReturnCallback( Object *pSender )
-{
-
-}
 
 void GameScene::onTouchesBegan(const vector<Touch*>& touches, Event *unused_event)
 {
@@ -318,6 +306,10 @@ void GameScene::updateJoystick(Point direction, float distance)
 
 void GameScene::updatePlane(float dt)
 {
+	if (_isGameOver)
+	{
+		return;
+	}
 	if(m_pJoystick && m_pJoystick->isVisible()) {
 				Size size = Director::getInstance()->getWinSize();
 		Rect screen = Rect(0, 0, size.width, size.height);
@@ -395,6 +387,7 @@ void GameScene::updateBoxBody(float dt)
 		_plane->setVisible(false);
 		_scoreLabel->setVisible(false);
 
+		//飞机爆炸粒子效果
 		auto particleSprite = Sprite::create("explosion.png");
 		this->addChild(particleSprite);
 
@@ -430,6 +423,11 @@ void GameScene::updateBullet(float dt)
 
 void GameScene::updateScore( float dt )
 {
+	if (_isGameOver)
+	{
+		return;
+	}
+
 	if( _plane->isVisible()) {
 		g_gameTime += dt;
 		if(_scoreLabel) {
@@ -452,7 +450,6 @@ void GameScene::explosionEndDid()
 	#if (CC_TARGET_PLATFORM == CC_PLATFORM_ANDROID)
 		showAds(true);
 	#endif
-	//Director::getInstance()->replaceScene(TransitionFade::create(1.2f, scene));
 }
 
 void GameScene::addBoxBodyForSprite(cocos2d::Sprite *sprite)
@@ -465,6 +462,7 @@ void GameScene::addBoxBodyForSprite(cocos2d::Sprite *sprite)
 
 	if(sprite->getTag() == SPRITE_PLANE) {
 		int num = 5;
+		//顶点数组在windows使用PointHelper制作。
 		b2Vec2 verts[] = {
 			b2Vec2(-10.9f / PTM_RATIO, 24.3f / PTM_RATIO),
 			b2Vec2(-25.6f / PTM_RATIO, 0.0f / PTM_RATIO),
@@ -489,8 +487,6 @@ void GameScene::addBoxBodyForSprite(cocos2d::Sprite *sprite)
 		fixtureDef.isSensor = true;
 		body->CreateFixture(&fixtureDef);
 	}
-
-
 }
 
 GameOverLayer::GameOverLayer()
@@ -563,8 +559,6 @@ bool GameOverLayer::init()
 		maxText->setPosition(Point(levelText->getPositionX(), levelText->getPositionY() - levelText->getContentSize().height - 50));
 		scorePanel->addChild(maxText);
 
-
-
 		char tmp[4];
 		sprintf(tmp, "%d", maxScore);
 		string maxScoreStr(tmp);
@@ -601,7 +595,3 @@ bool GameOverLayer::init()
 	return ret;
 }
 
-void GameOverLayer::menuNewCallback(Object* pSender)
-{
-
-}

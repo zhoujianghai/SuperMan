@@ -24,7 +24,6 @@ Scene* WelcomeScene::createScene()
     return scene;
 }
 
-// on "init" you need to initialize your instance
 bool WelcomeLayer::init()
 {
     if ( !Layer::init() )
@@ -49,7 +48,7 @@ bool WelcomeLayer::init()
 	planeSprite->setScale(2.0f);
 	planeSprite->setPosition(Point(origin.x + visibleSize.width / 2, origin.y + titleSprite->getPositionY() - titleSprite->getContentSize().height - planeSprite->getContentSize().height / 2 - 100));
 	this->addChild(planeSprite);
-
+	//C++11之lambda表达式
 	auto startBtnItem = MenuItemImage::create("", "", [](Object *sender) {
 				Scene *scene = GameScene::scene();
 				Director::getInstance()->replaceScene(CCTransitionCrossFade::create(1.2f,scene));
@@ -64,57 +63,46 @@ bool WelcomeLayer::init()
 	auto startBtnText = Sprite::createWithSpriteFrameName("start_game_text.png");
 	startBtnText->setPosition(startBtnItem->getPosition());
 	this->addChild(startBtnText);
-
-	//auto snowSprite2 = Sprite::create("snow.png");
-	//snowSprite2->setPosition(startBtnItem->getPosition());
-	//snowSprite2->runAction(RepeatForever::create(Sequence::create(FadeIn::create(1.0f), FadeOut::create(0.5f), NULL)));
-	//this->addChild(snowSprite2);
-
+	//开始游戏按钮上的雪花粒子效果
 	auto btnParticleEmitter = ParticleSystemQuad::create("btn_snow.plist");
 	btnParticleEmitter->setPosition(Point(startBtnItem->getPositionX(), startBtnItem->getPositionY() - startBtnItem->getContentSize().height / 2 + 20));
 	auto btnParticleBatch = ParticleBatchNode::createWithTexture(btnParticleEmitter->getTexture());
 	btnParticleBatch->addChild(btnParticleEmitter);
 	this->addChild(btnParticleBatch, 5);
 
-	//auto particleSprite = Sprite::create("snow.png");
-	//this->addChild(particleSprite);
-
+	//背景雪花粒子效果
 	auto particleEmitter = ParticleSystemQuad::create("snow.plist");
 	particleEmitter->setPosition(Point(origin.x + visibleSize.width / 2, origin.y + visibleSize.height + 5));
 	auto particleBatch = ParticleBatchNode::createWithTexture(particleEmitter->getTexture());
 	particleBatch->addChild(particleEmitter);
 	this->addChild(particleBatch, 5);
 
-	//auto sunParticle = ParticleSun::createWithTotalParticles(20);
- //   sunParticle->setTexture( Director::getInstance()->getTextureCache()->addImage("fire.png") );
-	//sunParticle->setPosition(Point(planeSprite->getPositionX(), planeSprite->getPositionY() - planeSprite->getContentSize().height / 2 - 30));
-	//this->addChild(sunParticle, 10);
-
+	//沿着"开始游戏按钮"游动的粒子1
 	auto starSprite = Sprite::create("star.png");
 	starSprite->setScale(0.4f);
 	starSprite->setPosition(Point(startBtnItem->getPosition().x - startBtnItem->getContentSize().width / 2, startBtnItem->getPosition().y - startBtnItem->getContentSize().height / 2));	
 	this->addChild(starSprite, 10);
 
-	auto _emitter = particleInit();
-	_emitter->setPosition(Point(startBtnItem->getPosition().x - startBtnItem->getContentSize().width / 2 - 2, startBtnItem->getPosition().y  - startBtnItem->getContentSize().height / 2 + 3));
+	auto emitter_1 = initParticle();
+	emitter_1->setPosition(Point(startBtnItem->getPosition().x - startBtnItem->getContentSize().width / 2 - 2, startBtnItem->getPosition().y  - startBtnItem->getContentSize().height / 2 + 3));
 
 	float X = 2;
-	auto path = MyPathFun(X, startBtnItem->getContentSize().height, startBtnItem->getContentSize().width - 2 * X, true);
+	auto path = buildParticleMovePath(X, startBtnItem->getContentSize().height, startBtnItem->getContentSize().width - 2 * X, true);
 
 	starSprite->runAction(path);
-	_emitter->runAction(path->clone());
-
+	emitter_1->runAction(path->clone());
+	//沿着"开始游戏按钮"游动的粒子2
 	auto starSprite2 = Sprite::create("star.png");
 	starSprite2->setScale(0.4f);
 	starSprite2->setPosition(Point(startBtnItem->getPosition().x + startBtnItem->getContentSize().width / 2, startBtnItem->getPosition().y + startBtnItem->getContentSize().height / 2));	
 	this->addChild(starSprite2, 10);
 
-	auto _emitter2 = particleInit();
-	_emitter2->setPosition(Point(startBtnItem->getPosition().x + startBtnItem->getContentSize().width / 2 - 2, startBtnItem->getPosition().y  + startBtnItem->getContentSize().height / 2 + 3));
-	auto path2 = MyPathFun(X, startBtnItem->getContentSize().height, startBtnItem->getContentSize().width - 2 * X, false);
+	auto emitter_2 = initParticle();
+	emitter_2->setPosition(Point(startBtnItem->getPosition().x + startBtnItem->getContentSize().width / 2 - 2, startBtnItem->getPosition().y  + startBtnItem->getContentSize().height / 2 + 3));
+	auto path2 = buildParticleMovePath(X, startBtnItem->getContentSize().height, startBtnItem->getContentSize().width - 2 * X, false);
 
 	starSprite2->runAction(path2);
-	_emitter2->runAction(path2->clone());
+	emitter_2->runAction(path2->clone());
 
 
 	#if (CC_TARGET_PLATFORM == CC_PLATFORM_ANDROID)
@@ -124,92 +112,74 @@ bool WelcomeLayer::init()
     return true;
 }
 
-
-void WelcomeLayer::menuCloseCallback(Object* pSender)
-{
-    Director::getInstance()->end();
-
-#if (CC_TARGET_PLATFORM == CC_PLATFORM_IOS)
-    exit(0);
-#endif
-}
-
-
-void WelcomeLayer::menuNewCallback(Object* pSender)
-{
-
-}
-
-
-ParticleSystem* WelcomeLayer::particleInit(){
-	auto _emitter = new ParticleSystemQuad();
-	_emitter->initWithTotalParticles(100);
-	addChild(_emitter, 10);
-	_emitter->setTexture(Director::getInstance()->getTextureCache()->addImage("star.png"));
-	_emitter->setAnchorPoint(Point(0, 0));
+ParticleSystem* WelcomeLayer::initParticle(){
+	auto emitter = new ParticleSystemQuad();
+	emitter->initWithTotalParticles(100);
+	addChild(emitter, 10);
+	emitter->setTexture(Director::getInstance()->getTextureCache()->addImage("star.png"));
+	emitter->setAnchorPoint(Point(0, 0));
 	// duration
-	_emitter->setDuration(ParticleSystem::DURATION_INFINITY);
+	emitter->setDuration(ParticleSystem::DURATION_INFINITY);
 
 	// radius mode
-	_emitter->setEmitterMode(ParticleSystem::Mode::RADIUS);
+	emitter->setEmitterMode(ParticleSystem::Mode::RADIUS);
 
 	// radius mode: start and end radius in pixels
-	_emitter->setStartRadius(4);
-	_emitter->setStartRadiusVar(1);
-	_emitter->setEndRadius(ParticleSystem::START_RADIUS_EQUAL_TO_END_RADIUS);
-	_emitter->setEndRadiusVar(0);
+	emitter->setStartRadius(4);
+	emitter->setStartRadiusVar(1);
+	emitter->setEndRadius(ParticleSystem::START_RADIUS_EQUAL_TO_END_RADIUS);
+	emitter->setEndRadiusVar(0);
 
 	// radius mode: degrees per second
-	_emitter->setRotatePerSecond(100);
-	_emitter->setRotatePerSecondVar(0);
+	emitter->setRotatePerSecond(100);
+	emitter->setRotatePerSecondVar(0);
 
 	// angle
-	_emitter->setAngle(90);
-	_emitter->setAngleVar(0);
+	emitter->setAngle(90);
+	emitter->setAngleVar(0);
 
 	// emitter position
 	auto size = Director::getInstance()->getWinSize();
-	_emitter->setPosVar(Point::ZERO);
+	emitter->setPosVar(Point::ZERO);
 
 	// life of particles
-	_emitter->setLife(1.0);
-	_emitter->setLifeVar(0);
+	emitter->setLife(1.0);
+	emitter->setLifeVar(0);
 
 	// spin of particles
-	_emitter->setStartSpin(0);
-	_emitter->setStartSpinVar(0);
-	_emitter->setEndSpin(0);
-	_emitter->setEndSpinVar(0);
+	emitter->setStartSpin(0);
+	emitter->setStartSpinVar(0);
+	emitter->setEndSpin(0);
+	emitter->setEndSpinVar(0);
 
 	// color of particles
 	Color4F startColor(1.0f, 1.0f, 0.9f, 1.0f);
-	_emitter->setStartColor(startColor);
+	emitter->setStartColor(startColor);
 
 	Color4F startColorVar(0, 0, 0, 1.0f);
-	_emitter->setStartColorVar(startColorVar);
+	emitter->setStartColorVar(startColorVar);
 
 	Color4F endColor(1.0f, 1.0f, 1.0f, 0.1f);
-	_emitter->setEndColor(endColor);
+	emitter->setEndColor(endColor);
 
 	Color4F endColorVar(0, 0, 0, 0.1f);
-	_emitter->setEndColorVar(endColorVar);
-	//Color4F setStartColor(Color4F(Color4B(50, 50, 50, 50)));
-	//Color4F setEndColor(Color4F(Color4B(0, 0, 0, 0)));
+	emitter->setEndColorVar(endColorVar);
+
 	// size, in pixels
-	_emitter->setStartSize(15);
-	_emitter->setStartSizeVar(1);
-	_emitter->setEndSize(0);
+	emitter->setStartSize(15);
+	emitter->setStartSizeVar(1);
+	emitter->setEndSize(0);
 
 	// emits per second
-	_emitter->setEmissionRate(_emitter->getTotalParticles() / _emitter->getLife());
+	emitter->setEmissionRate(emitter->getTotalParticles() / emitter->getLife());
 
 	// additive
-	_emitter->setBlendAdditive(false);
+	emitter->setBlendAdditive(false);
 
-	return _emitter;
+	return emitter;
 }
 
-RepeatForever* WelcomeLayer::MyPathFun(float controlX, float controlY, float w,  bool isClockwise)
+RepeatForever* WelcomeLayer::buildParticleMovePath(float controlX, float controlY, float w,  bool isClockwise)
 {
 	ccBezierConfig bezier1;
 	if(isClockwise) {

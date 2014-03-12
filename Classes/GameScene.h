@@ -42,15 +42,12 @@ public:
 	void onTouchesMoved(const std::vector<cocos2d::Touch*>& touches, cocos2d::Event *unused_event);
 	void onTouchesEnded(const std::vector<cocos2d::Touch*>& touches, cocos2d::Event *unused_event);
 
-	void pausePressed(cocos2d::Object *pSender);
-
 	void addBoxBodyForSprite(cocos2d::Sprite *sprite);
 
 	// implement the "static node()" method manually
 	CREATE_FUNC(GameScene);
 
 private:
-	void menuReturnCallback(cocos2d::Object *pSender);
 
 	void createBullet(float dt);
 	void updateBullet(float dt);
@@ -89,8 +86,6 @@ public:
 	virtual ~GameOverLayer();
 
 	bool init();
-
-	void menuNewCallback(Object* pSender);
 
 	CREATE_FUNC(GameOverLayer);
 };

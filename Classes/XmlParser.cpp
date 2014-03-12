@@ -135,8 +135,8 @@ void XMLParser::textHandler(void *ctx, const char *s, int len)
 	}
 	if(noValue) return;
 	string result = replace(value, string("\\n"), string("\n"));
-	CCString *pString = CCString::create(result);
-	CCLog("key=%s value=%s", m_key.c_str(), pString->getCString());
+	String *pString = CCString::create(result);
+	log("key=%s value=%s", m_key.c_str(), pString->getCString());
 	this->m_pDictionary->setObject(pString, this->m_key);
 }
 

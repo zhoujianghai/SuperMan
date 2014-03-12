@@ -29,6 +29,7 @@ bool Bullet::init()
 		const int speedUnit = 4;
 		float x = 0, y = 0;
 		Size bullet_show_size = this->getDisplayFrame()->getRect().size;
+		//子弹从屏幕四个方向飞入
 		switch(direction) {
 			case DIR_UP:
 			{
