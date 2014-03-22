@@ -6,7 +6,7 @@
 class WelcomeScene : public cocos2d::Scene
 {
 public:
-    static cocos2d::Scene* createScene();
+    static cocos2d::Scene* scene();
 };
 
 class WelcomeLayer : public cocos2d::Layer
@@ -19,8 +19,6 @@ public:
     CREATE_FUNC(WelcomeLayer);
 
 	cocos2d::RepeatForever* buildParticleMovePath(float controlX, float controlY, float w, bool isClockwise);
-
-	cocos2d::ParticleSystem* initParticle();
 
 };
 

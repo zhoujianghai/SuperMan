@@ -5,7 +5,9 @@
 using namespace cocos2d;
 
 Bullet::Bullet()
-	:_speed_x(0),_speed_y(0)
+	:_speed_x(0),
+	_speed_y(0),
+	_is_live(true)
 {
 
 }

@@ -1,9 +1,9 @@
 #include "GameScene.h"
-#include "WelcomeScene.h"
-#include "bullet.h"
 #include "plane.h"
+#include "bullet.h"
 #include "VisibleRect.h"
 #include "MyContactListener.h"
+
 #include "XmlParser.h"
 
 #if (CC_TARGET_PLATFORM == CC_PLATFORM_ANDROID)
@@ -12,19 +12,17 @@
 #include "cocos-ext.h"
 #endif
 
+#if (CC_TARGET_PLATFORM == CC_PLATFORM_ANDROID)
+extern void showAds(bool show);
+#endif
+
 USING_NS_CC_EXT;
-
-
 using namespace cocos2d;
 using namespace std;
 
 #define PTM_RATIO 32
 
 int g_gameTime = 0;
-
-#if (CC_TARGET_PLATFORM == CC_PLATFORM_ANDROID)
-extern void showAds(bool show);
-#endif
 
 string getLevel(int score) {
 	string ret = "";
@@ -64,17 +62,20 @@ int getBulletNum(int score) {
 }
 
 GameScene::GameScene()
-	:_world(NULL),
+	:_plane(NULL),
+	_isFlying(false),
+	_bullets(NULL),
+	_spriteBatch(NULL),
+	_world(NULL),
 	_contactListener(NULL),
-	_isGameOver(false),
-	m_pJoystick(NULL),
-	m_pJoystickBg(NULL)
+	_isGameOver(false)
 {
 
 }
 
 GameScene::~GameScene()
 {
+	CC_SAFE_DELETE(_bullets);
 	CC_SAFE_DELETE(_contactListener);
 	CC_SAFE_DELETE(_world);
 }
@@ -86,31 +87,35 @@ bool GameScene::init()
 	{
 		CC_BREAK_IF(! Layer::init());
 
-		auto visibleSize = Director::getInstance()->getVisibleSize();
+		_screenSize = Director::getInstance()->getVisibleSize();
+		_screenRect = Rect(0, 0, _screenSize.width, _screenSize.height);
+
 		auto origin = Director::getInstance()->getVisibleOrigin();
+
+		SpriteFrameCache::getInstance()->addSpriteFramesWithFile("pig.plist");
+
+		SpriteFrameCache::getInstance()->addSpriteFramesWithFile("resources.plist");
+		_spriteBatch = SpriteBatchNode::create("resources.png");
+		this->addChild(_spriteBatch);
+
+		this->initPhysics();
+
 		int index = (int)(rand() % 5 + 1);
 		const char* bg_name = String::createWithFormat("img_bg_%d.jpg", index)->getCString();
 		//log("bg_name=%s", bg_name);
 		auto background = Sprite::create(bg_name);
-		background->setPosition(Point(visibleSize.width/2 + origin.x, visibleSize.height/2 + origin.y));
+		background->setPosition(Point(_screenSize.width/2 + origin.x, _screenSize.height/2 + origin.y));
 		this->addChild(background, -1);
 
-		SpriteFrameCache::getInstance()->addSpriteFramesWithFile("resources.plist");
-		_sprite_batch = SpriteBatchNode::create("resources.png");
-		this->addChild(_sprite_batch);
-
 		_scoreLabel =  LabelAtlas::create("0", "number_small.png", 22, 28, '0');
-		_scoreLabel->setPosition(Point(origin.x + visibleSize.width / 2 - _scoreLabel->getContentSize().width / 2, origin.y + visibleSize.height - _scoreLabel->getContentSize().height - 5));
+		_scoreLabel->setPosition(Point(origin.x + _screenSize.width / 2 - _scoreLabel->getContentSize().width / 2, origin.y + _screenSize.height - _scoreLabel->getContentSize().height - 5));
 		this->addChild(_scoreLabel);
-
-		this->initPhysics();
 
 		_plane = Plane::create();
 		_plane->setTag(SPRITE_PLANE);
 		_plane->setScale(2.0f);
-		_plane->setPosition(Point(origin.x + visibleSize.width / 2, origin.y + visibleSize.height / 2));
-		_sprite_batch->addChild(_plane, 100);
-		//this->addChild(_plane, 100);
+		_plane->setPosition(Point(origin.x + _screenSize.width / 2, origin.y + _screenSize.height / 2));
+		this->addChild(_plane, 100);
 		this->addBoxBodyForSprite(_plane);
 
 		auto listener = EventListenerTouchAllAtOnce::create();
@@ -119,32 +124,119 @@ bool GameScene::init()
 		listener->onTouchesEnded = CC_CALLBACK_2(GameScene::onTouchesEnded, this); 
 		_eventDispatcher->addEventListenerWithSceneGraphPriority(listener, this);
 
-		this->schedule(schedule_selector(GameScene::createBullet));
-		this->schedule(schedule_selector(GameScene::updateBullet));
-		this->schedule(schedule_selector(GameScene::updatePlane));
-		this->schedule(schedule_selector(GameScene::updateBoxBody));
-		this->schedule(SEL_SCHEDULE(&GameScene::updateScore),1);
-
-		isFlying = false;
-		g_gameTime = 0;
 		_bullets = Array::create();
 		_bullets->retain();
 
-		m_pJoystick = Sprite::createWithSpriteFrameName("joystick.png");
-		m_pJoystickBg = Sprite::createWithSpriteFrameName("joystick_bg.png");
-		this->addChild(m_pJoystickBg, 0);
-		this->addChild(m_pJoystick, 1);
+		this->schedule(schedule_selector(GameScene::createBullet));
+		this->schedule(schedule_selector(GameScene::updateBullet));
+		this->schedule(schedule_selector(GameScene::updateBoxBody));
+		this->schedule(schedule_selector(GameScene::updateScore),1);
 
-		this->hideJoystick();
+		g_gameTime = 0;
 
-	#if (CC_TARGET_PLATFORM == CC_PLATFORM_ANDROID)
+#if (CC_TARGET_PLATFORM == CC_PLATFORM_ANDROID)
 		showAds(false);
-	#endif
+#endif
 
 		bRet = true;
 	}while(0);
 
 	return bRet;
+}
+
+
+Scene* GameScene::scene()
+{
+	Scene * scene = NULL;
+	do 
+	{
+		scene = Scene::create();
+		CC_BREAK_IF(! scene);
+
+		GameScene *layer = GameScene::create();
+		CC_BREAK_IF(! layer);
+
+		scene->addChild(layer);
+	} while (0);
+
+	return scene;
+}
+
+
+void GameScene::onTouchesBegan(const vector<Touch*>& touches, Event *unused_event)
+{
+	vector<Touch*>::const_iterator touchIter = touches.begin();
+	Touch *pTouch = (Touch*)(*touchIter);
+	Point location = pTouch->getLocation();
+	Rect rect = _plane->getBoundingBox();
+	if(rect.containsPoint(location))
+	{
+		_isFlying = true;
+	}
+}
+
+void GameScene::onTouchesMoved(const vector<Touch*>& touches, Event *unused_event)
+{
+
+	vector<Touch*>::const_iterator touchIter = touches.begin();
+	Touch *pTouch = (Touch*)(*touchIter);
+	Point location = pTouch->getLocation();
+
+	Point start = pTouch->getStartLocation();
+	Point direction = (location - start).normalize();
+
+	Rect screen = Rect(0, 0, _screenSize.width, _screenSize.height);
+	if(_isFlying)
+	{
+		if(screen.containsPoint(location)) {
+			_plane->setPosition(location);
+		}
+	}
+
+}
+
+void GameScene::onTouchesEnded(const vector<Touch*>& touches, Event *unused_event)
+{
+	_isFlying = false;
+}
+
+
+void GameScene::createBullet( float dt )
+{
+	if (_isGameOver)
+	{
+		return;
+	}
+
+	int maxBulletNum = getBulletNum(g_gameTime);
+	if (_bullets->count() >= maxBulletNum)
+	{
+		return;
+	}
+
+	Bullet* bullet = Bullet::create();
+	bullet->setTag(SPRITE_BULLET);
+	bullet->setScale(0.5f);
+	_spriteBatch->addChild(bullet);
+	_bullets->addObject(bullet);
+	this->addBoxBodyForSprite(bullet);
+}
+
+void GameScene::updateBullet(float dt)
+{
+	if (_isGameOver)
+	{
+		return;
+	}
+
+	Object *bulletObj = NULL;
+	CCARRAY_FOREACH(_bullets, bulletObj)
+	{
+		Bullet *bullet = (Bullet*)bulletObj;
+		Point position = bullet->getPosition();
+		Point new_pos = Point(position.x + bullet->get_speed_x(), position.y + bullet->get_speed_y());
+		bullet->setPosition(new_pos);
+	}
 }
 
 void GameScene::initPhysics()
@@ -173,153 +265,11 @@ void GameScene::initPhysics()
 
 	_contactListener = new MyContactListener();
 	_world->SetContactListener(_contactListener);
-}
 
-Scene* GameScene::scene()
-{
-	Scene * scene = NULL;
-	do 
-	{
-		// 'scene' is an autorelease object
-		scene = Scene::create();
-		CC_BREAK_IF(! scene);
-
-		// 'layer' is an autorelease object
-		GameScene *layer = GameScene::create();
-		CC_BREAK_IF(! layer);
-
-		// add layer as a child to scene
-		scene->addChild(layer);
-	} while (0);
-
-	// return the scene
-	return scene;
-}
-
-
-void GameScene::onTouchesBegan(const vector<Touch*>& touches, Event *unused_event)
-{
-	if(_isGameOver) return;
-
-	vector<Touch*>::const_iterator touchIter = touches.begin();
-	Touch *pTouch = (Touch*)(*touchIter);
-	Point location = pTouch->getLocation();
-	Rect rect = _plane->getBoundingBox();
-	if(rect.containsPoint(location))
-	{
-		isFlying = true;
-	}else {
-		this->showJoystick(location);
-	}
-
-	
-	//log("onTouchesBegan");
-}
-
-void GameScene::onTouchesMoved(const vector<Touch*>& touches, Event *unused_event)
-{
-	if(_isGameOver) return;
-
-	vector<Touch*>::const_iterator touchIter = touches.begin();
-	Touch *pTouch = (Touch*)(*touchIter);
-	Point location = pTouch->getLocation();
-
-		Point start = pTouch->getStartLocation();
-	float distance = start.getDistance(location);
-	Point direction = (location - start).normalize();
-	this->updateJoystick(direction, distance);
-		Size size = Director::getInstance()->getWinSize();
-		Rect screen = Rect(0, 0, size.width, size.height);
-	if(isFlying)
-	{
-		if(screen.containsPoint(location)) {
-			_plane->setPosition(location);
-		}
-	}else {
-			Point velocity = direction * (distance < 78 ? 3 : 5);
-			_plane->setVelocity(velocity);
-
-
-	}
-
-
-	//log("onTouchesMoved");
-}
-
-void GameScene::onTouchesEnded(const vector<Touch*>& touches, Event *unused_event)
-{
-	if(_isGameOver) return;
-
-	isFlying = false;
-	this->hideJoystick();
-	//log("onTouchesEnded");
-}
-
-
-void GameScene::createBullet( float dt )
-{
-	int maxBulletNum = getBulletNum(g_gameTime);
-	if (_bullets->count() >= maxBulletNum)
-	{
-		return;
-	}
-
-	Bullet* bullet = Bullet::create();
-	bullet->setScale(0.5f);
-	bullet->setTag(SPRITE_BULLET);
-	_sprite_batch->addChild(bullet);
-	_bullets->addObject(bullet);
-
-	//log("createBullet bullet=%p", bullet);
-	this->addBoxBodyForSprite(bullet);
-}
-
-void GameScene::showJoystick(Point pos)
-{
-	m_pJoystick->setPosition(pos);
-	m_pJoystickBg->setPosition(pos);
-
-	m_pJoystick->setVisible(true);
-	m_pJoystickBg->setVisible(true);
-}
-
-void GameScene::hideJoystick()
-{
-	m_pJoystick->setPosition(m_pJoystickBg->getPosition());
-	m_pJoystick->setVisible(false);
-	m_pJoystickBg->setVisible(false);
-}
-
-void GameScene::updateJoystick(Point direction, float distance)
-{
-	Point start = m_pJoystickBg->getPosition();
-
-	if(distance < 33)
-	{
-		m_pJoystick->setPosition(start + (direction * distance));
-	}else if(distance > 78) {
-		m_pJoystick->setPosition(start + (direction * 45));
-	}else {
-		m_pJoystick->setPosition(start + (direction * 33));
-	}
-}
-
-void GameScene::updatePlane(float dt)
-{
-	if (_isGameOver)
-	{
-		return;
-	}
-	if(m_pJoystick && m_pJoystick->isVisible()) {
-				Size size = Director::getInstance()->getWinSize();
-		Rect screen = Rect(0, 0, size.width, size.height);
-		Point planePos = _plane->getPosition();
-		Point expectP = planePos + _plane->getVelocity();
-			if(screen.containsPoint(expectP)) {
-			_plane->setPosition(expectP);
-		}
-	}
-
+	// _debugDraw = new GLESDebugDraw(PTM_RATIO);  
+	//_world->SetDebugDraw(_debugDraw);  
+ //   uint32 flags = b2Draw::e_shapeBit;  
+ //   _debugDraw->SetFlags(flags); 
 }
 
 void GameScene::updateBoxBody(float dt)
@@ -328,14 +278,9 @@ void GameScene::updateBoxBody(float dt)
 	{
 		return;
 	}
-
-	//调用world对象的step方法，这样它就可以进行物理仿真了。这里的两个参数分别是“速度迭代次数”和“位置迭代次数”--你应该设置他们的范围在8-10之间。
-	//这里的数字越小，精度越小，但是效率更高。数字越大，仿真越精确，但同时耗时更多。8一般是个折中
 	_world->Step(dt, 10, 10);
 
 	std::vector<b2Body *> toDestroy;
-	Size size = Director::getInstance()->getWinSize();
-	Rect screen = Rect(0, 0, size.width, size.height);
 
 	for(b2Body *body = _world->GetBodyList(); body; body = body->GetNext()) {
 		if(body->GetUserData() != NULL) {
@@ -344,9 +289,8 @@ void GameScene::updateBoxBody(float dt)
 			float b2Angle = -1 * CC_DEGREES_TO_RADIANS(sprite->getRotation());
 			body->SetTransform(b2Pos, b2Angle);
 
-			if (sprite->getTag() == SPRITE_BULLET && !screen.containsPoint(sprite->getPosition())) {
+			if (sprite->getTag() == SPRITE_BULLET && !_screenRect.containsPoint(sprite->getPosition())) {
 				toDestroy.push_back(body);
-				_bullets->removeObject(sprite);
 			}
 		 }
 	}
@@ -374,10 +318,9 @@ void GameScene::updateBoxBody(float dt)
 		b2Body *body = *iter2;
 		if(body->GetUserData() != NULL) {
 			Sprite *sprite = (Sprite *)body->GetUserData();
-			//log("sprite=%p", sprite);
-			// just do it temp
 			if(sprite->getTag() == SPRITE_BULLET) {
-				_sprite_batch->removeChild(sprite, true);
+				_spriteBatch->removeChild(sprite, true);
+				_bullets->removeObject(sprite);
 			}
 		}
 		_world->DestroyBody(body);
@@ -387,70 +330,20 @@ void GameScene::updateBoxBody(float dt)
 		_plane->setVisible(false);
 		_scoreLabel->setVisible(false);
 
-		//飞机爆炸粒子效果
-		auto particleSprite = Sprite::create("explosion.png");
-		this->addChild(particleSprite);
-
+		//�ɻ���ը����Ч��
 		auto particleEmitter = ParticleSystemQuad::create("explosion.plist");
 		particleEmitter->setPosition(_plane->getPosition());
 		auto particleBatch = ParticleBatchNode::createWithTexture(particleEmitter->getTexture());
 		particleBatch->addChild(particleEmitter);
 		this->addChild(particleBatch, 10);
 
-		_sprite_batch->removeAllChildrenWithCleanup(true);
-		_sprite_batch->setVisible(false);
+		_spriteBatch->removeAllChildrenWithCleanup(true);
+		_spriteBatch->setVisible(false);
 		_bullets->removeAllObjects();
 		this->runAction(Sequence::create(DelayTime::create(1), CallFunc::create(CC_CALLBACK_0(GameScene::explosionEndDid, this)),  NULL));
 	}
 }
 
-void GameScene::updateBullet(float dt)
-{
-	if (_isGameOver)
-	{
-		return;
-	}
-
-	Object *bulletObj = NULL;
-	CCARRAY_FOREACH(_bullets, bulletObj)
-	{
-		Bullet *bullet = (Bullet*)bulletObj;
-		Point position = bullet->getPosition();
-		Point new_pos = Point(position.x + bullet->get_speed_x(), position.y + bullet->get_speed_y());
-		bullet->setPosition(new_pos);
-	}
-}
-
-void GameScene::updateScore( float dt )
-{
-	if (_isGameOver)
-	{
-		return;
-	}
-
-	if( _plane->isVisible()) {
-		g_gameTime += dt;
-		if(_scoreLabel) {
-		char tmp[4];
-		sprintf(tmp, "%d", g_gameTime);
-		string scoreStr(tmp);
-		//log("score=%s", scoreStr.c_str());
-		_scoreLabel->setString(scoreStr);
-		}
-	}
-}
-
-void GameScene::explosionEndDid()
-{
-	//_explosion->setVisible(false);
-	auto scene = Director::getInstance()->getRunningScene();
-	auto layer = GameOverLayer::create();
-	scene->addChild(layer);
-
-	#if (CC_TARGET_PLATFORM == CC_PLATFORM_ANDROID)
-		showAds(true);
-	#endif
-}
 
 void GameScene::addBoxBodyForSprite(cocos2d::Sprite *sprite)
 {
@@ -462,7 +355,7 @@ void GameScene::addBoxBodyForSprite(cocos2d::Sprite *sprite)
 
 	if(sprite->getTag() == SPRITE_PLANE) {
 		int num = 5;
-		//顶点数组在windows使用PointHelper制作。
+		//����������windowsʹ��PointHelper������
 		b2Vec2 verts[] = {
 			b2Vec2(-10.9f / PTM_RATIO, 24.3f / PTM_RATIO),
 			b2Vec2(-25.6f / PTM_RATIO, 0.0f / PTM_RATIO),
@@ -489,6 +382,49 @@ void GameScene::addBoxBodyForSprite(cocos2d::Sprite *sprite)
 	}
 }
 
+//void GameScene::draw()  
+//{  
+//	glDisable(GL_TEXTURE_2D);  
+//	glDisableClientState(GL_COLOR_ARRAY);  
+//	glDisableClientState(GL_TEXTURE_COORD_ARRAY);  
+//  
+//	_world->DrawDebugData();  
+//  
+//	glEnable(GL_TEXTURE_2D);  
+//	glEnableClientState(GL_COLOR_ARRAY);  
+//	glEnableClientState(GL_TEXTURE_COORD_ARRAY);  
+//}  
+
+void GameScene::explosionEndDid()
+{
+	auto scene = Director::getInstance()->getRunningScene();
+	auto layer = GameOverLayer::create();
+	scene->addChild(layer);
+
+	#if (CC_TARGET_PLATFORM == CC_PLATFORM_ANDROID)
+		showAds(true);
+	#endif
+}
+
+
+void GameScene::updateScore( float dt )
+{
+	if (_isGameOver)
+	{
+		return;
+	}
+
+	if( _plane->isVisible()) {
+		g_gameTime += dt;
+		if(_scoreLabel) {
+		char tmp[4];
+		sprintf(tmp, "%d", g_gameTime);
+		string scoreStr(tmp);
+		_scoreLabel->setString(scoreStr);
+		}
+	}
+}
+
 GameOverLayer::GameOverLayer()
 {
 
@@ -506,7 +442,7 @@ bool GameOverLayer::init()
 		CC_BREAK_IF( !this->initWithColor(Color4B(105, 105, 105, 128)) );
 		Size visibleSize = Director::getInstance()->getVisibleSize();
 		Point origin = Director::getInstance()->getVisibleOrigin();
-		
+
 		auto title = Sprite::create("girl.png");
 		title->setPosition(Point(origin.x + visibleSize.width / 2, origin.y + visibleSize.height - title->getContentSize().height / 2 - 100));
 		this->addChild(title);
@@ -527,13 +463,12 @@ bool GameOverLayer::init()
 		newScoreLabel->setScale(0.8f);
 		newScoreLabel->setPosition(Point(purpleBase->getContentSize().width / 2 - newScoreLabel->getContentSize().width / 2 + 20, purpleBase->getContentSize().height / 2 - newScoreLabel->getContentSize().height / 2 + 30));
 		purpleBase->addChild(newScoreLabel);
-		//newScoreLabel->setScale(0.9f);
 
 		auto newRecordText = Sprite::createWithSpriteFrameName("record_breaking.png");
 		newRecordText->setPosition(Point(purpleBase->getContentSize().width / 2, purpleBase->getContentSize().height - newRecordText->getContentSize().height / 2));
 		purpleBase->addChild(newRecordText);
 
-		auto levelText = Sprite::create("level.png");
+		auto levelText = Sprite::createWithSpriteFrameName("level.png");
 		levelText->setPosition(Point(levelText->getContentSize().width / 2 + 140, scorePanel->getContentSize().height - levelText->getContentSize().height - 30));
 		levelText->setScale(1.5f);
 		scorePanel->addChild(levelText);
@@ -554,7 +489,7 @@ bool GameOverLayer::init()
 		levelDescText->setPosition(Point(levelText->getPositionX() + levelText->getContentSize().width + 60, levelText->getPositionY()));
 		scorePanel->addChild(levelDescText);
 
-		auto maxText = Sprite::create("max.png");
+		auto maxText = Sprite::createWithSpriteFrameName("max.png");
 		maxText->setScale(1.5f);
 		maxText->setPosition(Point(levelText->getPositionX(), levelText->getPositionY() - levelText->getContentSize().height - 50));
 		scorePanel->addChild(maxText);
@@ -572,13 +507,13 @@ bool GameOverLayer::init()
 		this->addChild(purpleBase);
 
 
-		//C++11之lambda表达式
+		//C++11֮lambda����ʽ
 		auto startBtnItem = MenuItemImage::create("", "", [](Object *sender) {
 				Scene *scene = GameScene::scene();
 				Director::getInstance()->replaceScene(scene);
 		});
 
-		auto btnSprite = Sprite::createWithSpriteFrameName("btn_yellow.png");
+		auto btnSprite = Sprite::create("btn_yellow.png");
 		startBtnItem->setNormalSpriteFrame(btnSprite->getDisplayFrame());
 		startBtnItem->setPosition(Point(origin.x + visibleSize.width / 2, origin.y + startBtnItem->getContentSize().height / 2 + 150));
 		auto startMenu = Menu::create(startBtnItem, NULL);
@@ -594,4 +529,3 @@ bool GameOverLayer::init()
 
 	return ret;
 }
-

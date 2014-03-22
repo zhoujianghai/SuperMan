@@ -22,6 +22,8 @@ public:
 	CC_SYNTHESIZE_READONLY(int, _speed_x, _speed_x);
 	CC_SYNTHESIZE_READONLY(int, _speed_y, _speed_y);
 
+	CC_SYNTHESIZE(bool, _is_live, _is_live);
+
 	CREATE_FUNC(Bullet);
 
 };
